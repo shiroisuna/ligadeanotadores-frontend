@@ -1,0 +1,34 @@
+:root {
+  /* Color — derivado del logo LABSMI: texto azul, pelota blanca con
+     costura roja, lápiz dorado (símbolo del anotador) */
+  --color-field: #1b3e8c;        /* azul LABSMI, fondo principal oscuro / marca */
+  --color-field-dark: #12285c;   /* azul más oscuro, profundidad/paneles */
+  --color-chalk: #f7f4ec;        /* blanco cálido de la pelota, fondo claro */
+  --color-clay: #c0392b;         /* rojo de costura, acento secundario / derrotas */
+  --color-amber: #e8a33d;        /* dorado del lápiz, cifras destacadas/CTA */
+  --color-amber-dim: #c98a2f;    /* dorado hover/activo */
+  --color-ink: #1a1e2b;          /* texto principal sobre fondo claro */
+  --color-ink-soft: #55596b;     /* texto secundario sobre fondo claro */
+  --color-win: #3e8e5a;          /* victorias, discreto (verde semántico universal) */
+  --color-loss: #c0392b;         /* derrotas — mismo rojo de la costura */
+  --color-line: #ddd6c4;         /* líneas divisorias sobre fondo claro */
+  --color-line-dark: #23386e;    /* líneas divisorias sobre fondo oscuro */
+
+  /* Tipografía */
+  --font-display: 'Oswald', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  /* Escala */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+}

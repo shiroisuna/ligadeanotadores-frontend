@@ -1,0 +1,267 @@
+@import './tokens.css';
+@import './admin.css';
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-chalk);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.cifra {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+.contenedor {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}
+
+/* ---- Marcador (barra de selección temporada/categoría) — elemento firma ---- */
+.marcador {
+  background: var(--color-field);
+  border-bottom: 4px solid var(--color-field-dark);
+  color: var(--color-chalk);
+  padding: var(--space-5) 0;
+}
+
+.marcador__fila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.marcador__marca {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  color: var(--color-chalk);
+  text-decoration: none;
+}
+
+.marcador__marca span {
+  color: var(--color-amber);
+}
+
+.marcador__logo {
+  height: 40px;
+  width: 40px;
+  object-fit: contain;
+  background: var(--color-chalk);
+  border-radius: 50%;
+  padding: 3px;
+  border: 2px solid var(--color-amber);
+}
+
+.marcador__selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.marcador__label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-amber);
+  text-transform: uppercase;
+}
+
+.marcador__select {
+  background: var(--color-field-dark);
+  border: 1px solid var(--color-line-dark);
+  color: var(--color-chalk);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  min-width: 220px;
+}
+
+.marcador__nav {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-4);
+}
+
+.marcador__link {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--color-chalk);
+  opacity: 0.75;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.marcador__link:hover,
+.marcador__link--activo {
+  opacity: 1;
+  border-bottom-color: var(--color-amber);
+}
+
+/* ---- Tablas de datos ---- */
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.tabla caption {
+  font-family: var(--font-display);
+  text-align: left;
+  font-size: 22px;
+  padding-bottom: var(--space-3);
+  color: var(--color-ink);
+}
+
+.tabla th {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  text-align: right;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--color-ink);
+}
+
+.tabla th:first-child,
+.tabla td:first-child {
+  text-align: left;
+}
+
+.tabla td {
+  padding: var(--space-2) var(--space-3);
+  text-align: right;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.tabla tbody tr:hover {
+  background: rgba(22, 48, 42, 0.04);
+}
+
+/* ---- Estado vacío ---- */
+.vacio {
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  color: var(--color-ink-soft);
+  font-family: var(--font-body);
+}
+
+/* ---- Pestañas de estadística (líderes) ---- */
+.pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-5) 0;
+}
+
+.pestana {
+  background: transparent;
+  border: 1px solid var(--color-line);
+  color: var(--color-ink-soft);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 999px;
+}
+
+.pestana--activa {
+  background: var(--color-field);
+  border-color: var(--color-field);
+  color: var(--color-chalk);
+}
+
+.marcador__auth {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-line-dark);
+}
+
+.marcador__auth-boton {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--color-chalk);
+  border: 1px solid rgba(247, 244, 236, 0.4);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-4);
+  background: none;
+}
+
+.marcador__auth-boton--dorado {
+  background: var(--color-amber);
+  color: var(--color-field-dark);
+  border-color: var(--color-amber);
+  font-weight: 600;
+}
+
+.marcador__auth-salir {
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-chalk);
+  opacity: 0.65;
+}
+.marcador__auth-salir:hover { opacity: 1; }
+
+.marcador__error {
+  background: var(--color-clay);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-align: center;
+  padding: var(--space-2);
+}
+
+.pestana--activa .pestana__rank { color: var(--color-amber); }
