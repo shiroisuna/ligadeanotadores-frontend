@@ -16,7 +16,7 @@ export default function LoginPage() {
     setEnviando(true);
     try {
       const usuario = await login(email, password);
-      navigate(usuario.rol === 'administrador' ? '/admin' : '/');
+      navigate(usuario.rol === 'jugador' ? '/' : '/admin');
     } catch (err) {
       setError(err.message);
     } finally {

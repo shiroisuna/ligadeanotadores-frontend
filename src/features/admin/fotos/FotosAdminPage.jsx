@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../../api/client';
 import { useToast } from '../../../components/Toast';
+import { CampoImagen } from '../../../components/CampoImagen';
 
 export default function FotosAdminPage() {
   const { notificar } = useToast();
@@ -18,6 +19,7 @@ export default function FotosAdminPage() {
 
   async function agregar(e) {
     e.preventDefault();
+    if (!url) { notificar('Sube una imagen primero', 'error'); return; }
     setEnviando(true);
     try {
       await api.post('/fotos', { url, descripcion, orden: Number(orden) || 0 });
@@ -47,16 +49,16 @@ export default function FotosAdminPage() {
       <div className="admin__cabecera">
         <div>
           <h1>Fotos del inicio</h1>
-          <p>Pega el link de una imagen ya subida (Drive, Imgur, etc.) — no hay subida de archivo directa todavía.</p>
+          <p>Sube una imagen para el carrusel de la página principal.</p>
         </div>
       </div>
 
       <form onSubmit={agregar} className="tarjeta-lista" style={{ padding: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
+        <div className="campo">
+          <label>Imagen</label>
+          <CampoImagen endpoint="/uploads/galeria" valor={url} onCambiar={setUrl} tamano={80} />
+        </div>
         <div className="campo--fila">
-          <div className="campo" style={{ flex: 2 }}>
-            <label>URL de la imagen</label>
-            <input required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
-          </div>
           <div className="campo" style={{ flex: 2 }}>
             <label>Descripción (opcional)</label>
             <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Final Infantil AA, 10 ago" />

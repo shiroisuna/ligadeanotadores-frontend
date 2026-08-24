@@ -1,7 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-// Uso: <RequireRole roles={['administrador']}><PanelAdmin /></RequireRole>
 export function RequireRole({ roles, children }) {
   const { usuario, cargando } = useAuth();
 

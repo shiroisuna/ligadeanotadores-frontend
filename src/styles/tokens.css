@@ -1,34 +1,72 @@
+/* ======================================================
+   TOKENS — paleta original (fondo claro, azul/dorado)
+   ====================================================== */
 :root {
-  /* Color — derivado del logo LABSMI: texto azul, pelota blanca con
-     costura roja, lápiz dorado (símbolo del anotador) */
-  --color-field: #1b3e8c;        /* azul LABSMI, fondo principal oscuro / marca */
-  --color-field-dark: #12285c;   /* azul más oscuro, profundidad/paneles */
-  --color-chalk: #f7f4ec;        /* blanco cálido de la pelota, fondo claro */
-  --color-clay: #c0392b;         /* rojo de costura, acento secundario / derrotas */
-  --color-amber: #e8a33d;        /* dorado del lápiz, cifras destacadas/CTA */
-  --color-amber-dim: #c98a2f;    /* dorado hover/activo */
-  --color-ink: #1a1e2b;          /* texto principal sobre fondo claro */
-  --color-ink-soft: #55596b;     /* texto secundario sobre fondo claro */
-  --color-win: #3e8e5a;          /* victorias, discreto (verde semántico universal) */
-  --color-loss: #c0392b;         /* derrotas — mismo rojo de la costura */
-  --color-line: #ddd6c4;         /* líneas divisorias sobre fondo claro */
-  --color-line-dark: #23386e;    /* líneas divisorias sobre fondo oscuro */
+  /* Fondos — claro como el diseño original */
+  --bg:          #f1f5f9;  /* slate-100 — fondo general crema/gris claro */
+  --bg-2:        #ffffff;  /* blanco — cards y paneles */
+  --bg-3:        #f8fafc;  /* casi blanco — inputs */
+  --border:      #e2e8f0;  /* slate-200 */
 
-  /* Tipografía */
-  --font-display: 'Oswald', sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  /* Header — azul oscuro como el original */
+  --hdr-bg:      #1e3a8a;  /* blue-900 */
+  --hdr-border:  #1e40af;  /* blue-800 */
+  --hdr-txt:     #ffffff;
+  --hdr-txt-soft: rgba(255,255,255,0.75);
 
-  /* Escala */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
+  /* Acento */
+  --blue:        #1e3a8a;  /* blue-900 — igual que el header */
+  --blue-soft:   rgba(30,58,138,0.08);
+  --blue-txt:    #1e40af;  /* blue-800 */
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  /* Victoria / derrota */
+  --green:       #16a34a;
+  --green-soft:  rgba(22,163,74,0.10);
+  --red:         #dc2626;
+  --red-soft:    rgba(220,38,38,0.08);
+
+  /* Dorado/ámbar — acento secundario */
+  --amber:       #d97706;
+  --amber-txt:   #b45309;
+  --amber-bg:    #fef3c7;
+
+  /* Texto */
+  --txt:         #0f172a;  /* slate-900 */
+  --txt-2:       #1e293b;  /* slate-800 */
+  --txt-3:       #64748b;  /* slate-500 */
+  --txt-4:       #94a3b8;  /* slate-400 */
+
+  /* Tipografías */
+  --font-sans:   'Inter', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', monospace;
+
+  /* Radios */
+  --r:           0.5rem;
+  --r-lg:        0.75rem;
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+}
+
+button { cursor: pointer; font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+
+input, select, textarea {
+  font-family: inherit;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--txt);
+  border-radius: var(--r);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.875rem;
+}
+input:focus, select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(30,58,138,0.12); }
+
+.contenedor { max-width: 1280px; margin: 0 auto; padding: 0 1rem; }
+.vacio { text-align: center; color: var(--txt-3); font-size: 0.875rem; padding: 2rem; }

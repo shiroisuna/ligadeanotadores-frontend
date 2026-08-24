@@ -54,10 +54,12 @@ export function Marcador({ onCambiarCategoria }) {
 
         <nav className="marcador__nav">
           {enlace('/resultados', 'Resultados')}
+          {enlace('/calendario', 'Calendario')}
           {enlace('/posiciones', 'Posiciones')}
           {enlace('/lideres', 'Líderes')}
           {enlace('/estadisticas-equipo', 'Por equipo')}
           {enlace('/juegos-por-equipo', 'Cruces')}
+          {enlace('/nosotros', 'Nosotros')}
         </nav>
 
         <div className="marcador__auth">
