@@ -23,12 +23,48 @@ export function usePlayerModal() {
   return ctx;
 }
 
-function Estadistica({ etiqueta, valor }) {
+function formatFecha(f) {
+  if (!f) return '';
+  const d = new Date(f + 'T00:00:00');
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+const COLS_HIST_BATEO = [
+  ['vb', 'VB'], ['ca', 'CA'], ['hc', 'HC'], ['bb', 'BB'],
+  ['h2', '2H'], ['h3', '3H'], ['hr', 'HR'], ['ci', 'CI'], ['br', 'BR'], ['so', 'SO'],
+];
+
+const COLS_HIST_PITCHEO = [
+  ['i', 'I'], ['r', 'R'], ['c', 'C'], ['vb', 'VBC'], ['hp', 'HP'],
+  ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'], ['il', 'IL'], ['cl', 'CL'], ['so', 'SO'], ['bb', 'BB'],
+];
+
+function TablaHistorial({ titulo, filas, cols }) {
+  if (!filas || filas.length === 0) return null;
   return (
-    <div className="stat-jugador">
-      <div className="stat-jugador__valor cifra">{valor ?? '—'}</div>
-      <div className="stat-jugador__etiqueta">{etiqueta}</div>
-    </div>
+    <>
+      <h3 style={{ fontSize: 16, margin: '0 0 var(--space-3)', color: 'var(--blue-txt)' }}>{titulo}</h3>
+      <div style={{ overflowX: 'auto', marginBottom: 'var(--space-5)' }}>
+        <table className="tabla">
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left' }}>Fecha</th>
+              <th style={{ textAlign: 'left' }}>Vs</th>
+              {cols.map(([k, l]) => <th key={k}>{l}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f, i) => (
+              <tr key={i}>
+                <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{formatFecha(f.fecha)}</td>
+                <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>Vs {f.rival}</td>
+                {cols.map(([k]) => <td key={k}>{f[k] ?? 0}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -47,9 +83,23 @@ function JugadorModal({ rosterId, onCerrar }) {
   const p = datos?.pitcheo;
   const nombre = b ? `${b.nombres} ${b.apellidos}` : p ? `${p.nombres} ${p.apellidos}` : 'Jugador';
   const equipo = b?.equipo || p?.equipo;
+  const categoria = b?.categoria_nombre || p?.categoria_nombre;
 
   return (
-    <Modal titulo={nombre} abierto={!!rosterId} onCerrar={onCerrar} ancho={520}>
+    <Modal
+      titulo={nombre}
+      abierto={!!rosterId}
+      onCerrar={onCerrar}
+      ancho={720}
+      estiloCabecera={{ background: '#16296b', color: '#fff' }}
+      subtitulo={(b || p) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 15 }}>
+          <TeamBadge nombre={equipo} logoUrl={b?.logo_url || p?.logo_url} tamano={22} />
+          {equipo}
+          {categoria && <><span style={{ opacity: 0.6 }}>|</span><span style={{ opacity: 0.85 }}>{categoria}</span></>}
+        </div>
+      )}
+    >
       {cargando && <div className="vacio">Cargando…</div>}
 
       {!cargando && !b && !p && (
@@ -58,64 +108,18 @@ function JugadorModal({ rosterId, onCerrar }) {
 
       {!cargando && (b || p) && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 'var(--space-5)' }}>
-            {datos.foto_url ? (
+          {datos.foto_url && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 'var(--space-5)' }}>
               <img
                 src={datos.foto_url}
                 alt={nombre}
                 style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
               />
-            ) : (
-              <TeamBadge nombre={equipo} logoUrl={b?.logo_url || p?.logo_url} tamano={56} />
-            )}
-            <div>
-              <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                {datos.foto_url && <TeamBadge nombre={equipo} logoUrl={b?.logo_url || p?.logo_url} tamano={20} />}
-                {equipo}
-              </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--color-ink-soft)' }}>
-                {datos.numero_camiseta != null && `#${datos.numero_camiseta}`}
-                {datos.numero_camiseta != null && b?.posicion_principal && ' · '}
-                {b?.posicion_principal}
-              </div>
             </div>
-          </div>
-
-          {b && (
-            <>
-              <h3 style={{ fontSize: 13, marginBottom: 'var(--space-2)' }}>Bateo</h3>
-              <div className="stats-grid" style={{ marginBottom: 'var(--space-5)' }}>
-                <Estadistica etiqueta="Juegos" valor={b.juegos_jugados} />
-                <Estadistica etiqueta="V. al bate" valor={b.vb} />
-                <Estadistica etiqueta="Hits" valor={b.hits} />
-                <Estadistica etiqueta="Dobles" valor={b.dobles} />
-                <Estadistica etiqueta="Triples" valor={b.triples} />
-                <Estadistica etiqueta="Jonrones" valor={b.jonrones} />
-                <Estadistica etiqueta="Anotadas" valor={b.carreras_anotadas} />
-                <Estadistica etiqueta="Impulsadas" valor={b.carreras_impulsadas} />
-                <Estadistica etiqueta="B. robadas" valor={b.bases_robadas} />
-                <Estadistica etiqueta="B. x bolas" valor={b.bases_por_bolas} />
-                <Estadistica etiqueta="Ponches" valor={b.ponches} />
-                <Estadistica etiqueta="Promedio" valor={b.promedio_bateo} />
-                <Estadistica etiqueta="Slugging" valor={b.slugging} />
-              </div>
-            </>
           )}
 
-          {p && (
-            <>
-              <h3 style={{ fontSize: 13, marginBottom: 'var(--space-2)' }}>Pitcheo</h3>
-              <div className="stats-grid">
-                <Estadistica etiqueta="Ganados" valor={p.ganados} />
-                <Estadistica etiqueta="Perdidos" valor={p.perdidos} />
-                <Estadistica etiqueta="Salvados" valor={p.salvados} />
-                <Estadistica etiqueta="Innings" valor={p.innings_lanzados} />
-                <Estadistica etiqueta="Ponches" valor={p.ponches} />
-                <Estadistica etiqueta="C. limpias" valor={p.carreras_limpias} />
-                <Estadistica etiqueta="Efectividad" valor={p.efectividad} />
-              </div>
-            </>
-          )}
+          <TablaHistorial titulo="Actuación Reciente (Ofensiva)" filas={datos.historialBateo} cols={COLS_HIST_BATEO} />
+          <TablaHistorial titulo="Actuación Reciente (Pitcheo)" filas={datos.historialPitcheo} cols={COLS_HIST_PITCHEO} />
         </>
       )}
     </Modal>

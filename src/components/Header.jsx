@@ -15,6 +15,7 @@ const NAV = [
   { to: '/calendario',        label: 'Calendario' },
   { to: '/posiciones',        label: 'Posiciones' },
   { to: '/lideres',           label: 'Líderes' },
+  { to: '/colectivo',         label: 'Colectivo' },
   { to: '/estadisticas-equipo', label: 'Por equipo' },
   { to: '/juegos-por-equipo', label: 'Cruces' },
   { to: '/nosotros',          label: 'Nosotros' },

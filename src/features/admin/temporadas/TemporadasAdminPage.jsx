@@ -29,6 +29,19 @@ export default function TemporadasAdminPage() {
   useEffect(cargarActivas, [temporadaId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.get('/categorias').then(setCategoriasCatalogo); }, []);
 
+  async function eliminarTemporada(e, t) {
+    e.stopPropagation(); // evitar que se seleccione al hacer clic en el botón
+    if (!confirm(`¿Eliminar "${t.nombre}"? Esto borrará todos los juegos, estadísticas y datos asociados a esta temporada. Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/temporadas/${t.id}`);
+      notificar('Temporada eliminada', 'exito');
+      if (temporadaId === t.id) setTemporadaId(null);
+      cargarTemporadas();
+    } catch (err) {
+      notificar(err.message || 'No se pudo eliminar. Verifica que no tenga datos relacionados.', 'error');
+    }
+  }
+
   async function eliminarActiva(id, nombre) {
     if (!confirm(`¿Desactivar "${nombre}" de esta temporada?`)) return;
     try {
@@ -62,8 +75,17 @@ export default function TemporadasAdminPage() {
               className={`item-lista ${t.id === temporadaId ? 'item-lista--activo' : ''}`}
               onClick={() => setTemporadaId(t.id)}
             >
-              <span>{t.nombre}</span>
-              {t.activa ? <span className="item-lista__grupo">activa</span> : null}
+              <span style={{ flex: 1 }}>{t.nombre}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {t.activa ? <span className="item-lista__grupo">activa</span> : null}
+                <button
+                  className="boton boton--peligro boton--chico"
+                  onClick={(e) => eliminarTemporada(e, t)}
+                  title="Eliminar temporada"
+                >
+                  Eliminar
+                </button>
+              </div>
             </div>
           ))}
         </div>

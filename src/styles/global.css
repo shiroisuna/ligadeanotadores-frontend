@@ -1,271 +1,284 @@
-/* ══════════════════════════════════════════
-   COMPONENTES COMPARTIDOS — fondo claro
-   ══════════════════════════════════════════ */
-
-/* Cards */
-.card {
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-
-.card__hdr {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-3);
-}
-
-.card__titulo {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--txt);
-}
-
-.card__badge {
-  font-size: 0.65rem;
-  font-weight: 600;
-  background: var(--blue-soft);
-  color: var(--blue-txt);
-  border: 1px solid rgba(30,58,138,0.15);
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-}
-
-/* Tabla clara (estilo original) */
-.tabla-oscura {
-  width: 100%;
-  font-size: 0.82rem;
-  border-collapse: collapse;
-}
-.tabla-oscura thead tr {
+/* ======================================================
+   MARCADOR — header público con 3 pestañas de liga
+   (admin.css ya maneja .tabla, .modal, .vacio, etc.)
+   ====================================================== */
+.marcador {
   background: var(--hdr-bg);
-}
-.tabla-oscura thead th {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.85);
-  font-weight: 700;
-  text-align: center;
-}
-.tabla-oscura tbody tr {
-  border-bottom: 1px solid var(--border);
-  transition: background 100ms;
-}
-.tabla-oscura tbody tr:hover { background: var(--blue-soft); }
-.tabla-oscura td {
-  padding: 0.5rem 0.75rem;
-  text-align: center;
-  color: var(--txt-2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-/* Helpers de color */
-.txt-amber  { color: var(--amber-txt) !important; font-weight: 700; }
-.txt-blue   { color: var(--blue-txt) !important; font-weight: 700; }
-.txt-green  { color: var(--green) !important; font-weight: 600; }
-.txt-red    { color: var(--red) !important; font-weight: 600; }
-.txt-muted  { color: var(--txt-4) !important; }
-
-/* Escudo de equipo */
-.escudo {
-  display: inline-flex;
+.marcador__fila {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 50%;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  flex-wrap: wrap;
+}
+
+.marcador__marca {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   color: #fff;
-  font-weight: 700;
-  font-size: 0.7em;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
 }
 
-.equipo-cell {
+.marcador__logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2px solid var(--amber);
+}
+
+.marcador__sep { color: var(--amber); margin: 0 0.2rem; }
+
+.marcador__selectores {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.marcador__selector {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  color: var(--txt);
-  text-align: left;
+  gap: 0.4rem;
 }
 
-/* ── Inicio ── */
-.inicio { padding: 1.5rem 1rem; }
-
-.inicio__banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: linear-gradient(90deg, var(--blue-soft), var(--amber-bg));
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 0.65rem 1rem;
-  margin-bottom: 1.25rem;
-}
-.inicio__copa-label { font-size: 0.9rem; font-weight: 700; color: var(--txt); }
-.inicio__categoria  { font-size: 0.75rem; color: var(--txt-3); }
-
-.inicio__grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
-}
-@media (min-width: 1024px) {
-  .inicio__grid { grid-template-columns: 2fr 1fr; }
-}
-
-.inicio__col-main { display: flex; flex-direction: column; gap: 1.25rem; }
-.inicio__col-side  { display: flex; flex-direction: column; gap: 1.25rem; }
-
-/* Próxima jornada */
-.inicio__juegos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; padding: 0.75rem; }
-.inicio__juego {
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 0.65rem 0.75rem;
-  font-size: 0.8rem;
-}
-.inicio__juego-meta { font-size: 0.68rem; color: var(--txt-3); margin-bottom: 0.4rem; }
-.inicio__juego-versus { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--txt); }
-
-/* Líderes */
-.inicio__lideres-titulo {
-  font-size: 0.72rem;
+.marcador__label {
+  font-size: 0.68rem;
   font-weight: 700;
-  color: var(--blue-txt);
+  color: var(--amber);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
 }
-.inicio__lider {
+
+.marcador__select {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  font-size: 0.82rem;
+  min-width: 140px;
+  border-radius: var(--r);
+  padding: 0.3rem 0.6rem;
+}
+.marcador__select option { background: var(--hdr-bg); color: #fff; }
+
+.marcador__auth {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 0.45rem 0.6rem;
-  margin-bottom: 0.35rem;
-  text-align: left;
-  color: var(--txt);
-  transition: background 100ms;
+  gap: 0.6rem;
+  margin-left: auto;
+  flex-wrap: wrap;
 }
-.inicio__lider:hover { background: var(--blue-soft); }
-.inicio__lider-pos    { font-size: 0.7rem; color: var(--txt-4); width: 1rem; }
-.inicio__lider-nombre { font-size: 0.8rem; font-weight: 600; color: var(--txt-2); }
-.inicio__lider-equipo { font-size: 0.68rem; color: var(--txt-4); }
-.inicio__lider-valor  { font-size: 0.9rem; font-weight: 700; margin-left: auto; }
 
-/* ── Carrusel ── */
-.carrusel {
-  position: relative;
-  width: 100%;
-  height: 320px;
+.marcador__email {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.7);
+}
+
+.marcador__link {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.marcador__link:hover { color: #fff; }
+
+.marcador__link--panel {
+  background: var(--amber);
+  color: #fff !important;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+}
+.marcador__link--panel:hover { opacity: 0.9; }
+
+.marcador__link--salir {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.55) !important;
+}
+.marcador__link--salir:hover { color: #fff !important; }
+
+/* Pestañas de liga */
+.marcador__ramas-wrap {
+  background: rgba(0,0,0,0.18);
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.marcador__ramas {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 1rem;
+}
+
+.marcador__tabs {
+  display: flex;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--r);
+  padding: 2px;
+  gap: 2px;
+}
+
+.marcador__tab {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 1rem;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.55);
+  transition: all 120ms;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.marcador__tab:hover { color: #fff; }
+.marcador__tab--activo {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Barra de navegación */
+.marcador__nav {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 0 1rem;
+}
+
+.marcador__navlink {
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.9rem;
+  color: rgba(255,255,255,0.6);
+  border-bottom: 2px solid transparent;
+  text-align: center;
+  max-width: 90px;
+  transition: color 120ms;
+}
+.marcador__navlink:hover { color: #fff; }
+.marcador__navlink--activo {
+  color: #fff;
+  border-bottom-color: var(--amber);
+}
+
+/* ======================================================
+   PÁGINAS PÚBLICAS — tarjetas de resultado y cruces
+   ====================================================== */
+.resultados-feed {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4, 1rem);
+}
+
+.tarjeta-resultado {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--border);
+  padding: 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.tarjeta-resultado__meta {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--txt-3);
+  margin-bottom: 0.75rem;
+}
+
+.tarjeta-resultado__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  opacity: 0.6;
+}
+.tarjeta-resultado__fila--gana { opacity: 1; }
+
+.tarjeta-resultado__equipo {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.tarjeta-resultado__carreras {
+  font-size: 1.4rem;
+  font-weight: 700;
+  min-width: 2rem;
+  text-align: right;
+}
+
+.tarjeta-resultado__che {
+  font-size: 0.72rem;
+  color: var(--txt-3);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Matriz de cruces */
+.matriz th, .matriz td { text-align: center; font-size: 12px; white-space: nowrap; }
+.matriz__celda--propia {
+  background: repeating-linear-gradient(45deg, var(--border), var(--border) 4px, transparent 4px, transparent 8px);
+}
+.matriz td.matriz__celda--gana { background: rgba(21,128,61,0.1); color: #15803d; font-weight: 700; }
+.matriz td.matriz__celda--pierde { background: rgba(185,28,28,0.08); color: #b91c1c; }
+
+/* Carrusel */
+.carrusel {
+  position: relative; width: 100%; height: 320px;
+  border-radius: var(--r-lg); overflow: hidden; background: var(--border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .carrusel__imagen {
   width: 100%; height: 100%;
-  background-size: cover;
-  background-position: center;
-  display: flex; align-items: flex-end;
-  cursor: zoom-in;
+  background-size: cover; background-position: center;
+  display: flex; align-items: flex-end; cursor: zoom-in;
 }
 .carrusel__pie {
   background: linear-gradient(transparent, rgba(0,0,0,0.65));
-  color: #fff; width: 100%;
-  padding: 2rem 1rem 0.75rem;
-  font-size: 0.85rem;
+  color: #fff; width: 100%; padding: 2rem 1rem 0.75rem; font-size: 0.85rem;
 }
 .carrusel__flecha {
   position: absolute; top: 50%; transform: translateY(-50%);
   background: rgba(0,0,0,0.35); color: #fff; border: none;
-  width: 36px; height: 36px; border-radius: 50%; font-size: 1.3rem;
+  width: 36px; height: 36px; border-radius: 50%; font-size: 1.3rem; cursor: pointer;
 }
 .carrusel__flecha--izq { left: 0.75rem; }
 .carrusel__flecha--der { right: 0.75rem; }
-.carrusel__puntos {
-  position: absolute; bottom: 0.75rem; right: 1rem;
-  display: flex; gap: 6px;
-}
-.carrusel__punto {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: rgba(255,255,255,0.45); border: none; padding: 0;
-}
+.carrusel__puntos { position: absolute; bottom: 0.75rem; right: 1rem; display: flex; gap: 6px; }
+.carrusel__punto { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.45); border: none; padding: 0; cursor: pointer; }
 .carrusel__punto--activo { background: var(--amber); }
 
 /* Lightbox */
 .lightbox {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  position: fixed; inset: 0; background: rgba(0,0,0,0.88);
   display: flex; align-items: center; justify-content: center;
   z-index: 300; padding: 1.5rem; cursor: zoom-out;
 }
-.lightbox__imagen {
-  max-width: 90vw; max-height: 85vh;
-  object-fit: contain; border-radius: var(--r);
-  cursor: default; box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-}
-.lightbox__cerrar {
-  position: absolute; top: 1rem; right: 1.25rem;
-  background: rgba(255,255,255,0.15); color: #fff; border: none;
-  width: 40px; height: 40px; border-radius: 50%; font-size: 1.4rem;
-}
-.lightbox__flecha {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  background: rgba(255,255,255,0.15); color: #fff; border: none;
-  width: 48px; height: 48px; border-radius: 50%; font-size: 1.6rem;
-}
+.lightbox__imagen { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--r); cursor: default; }
+.lightbox__cerrar { position: absolute; top: 1rem; right: 1.25rem; background: rgba(255,255,255,0.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.4rem; cursor: pointer; }
+.lightbox__flecha { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.15); color: #fff; border: none; width: 48px; height: 48px; border-radius: 50%; font-size: 1.6rem; cursor: pointer; }
 .lightbox__flecha--izq { left: 1.25rem; }
 .lightbox__flecha--der { right: 1.25rem; }
-.lightbox__pie {
-  position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
-  color: #fff; font-size: 0.85rem;
-  background: rgba(0,0,0,0.45); padding: 0.35rem 1rem; border-radius: 999px;
-}
+.lightbox__pie { position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); color: #fff; font-size: 0.85rem; background: rgba(0,0,0,0.45); padding: 0.35rem 1rem; border-radius: 999px; }
 
-/* ── Toasts ── */
-.toasts {
-  position: fixed; bottom: 1.25rem; right: 1.25rem;
-  display: flex; flex-direction: column; gap: 0.5rem; z-index: 200;
-}
-.toast {
-  font-size: 0.875rem; padding: 0.65rem 1rem;
-  border-radius: var(--r); color: #fff;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2); min-width: 220px;
-  animation: toastIn 180ms ease;
-}
-@keyframes toastIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.toast--exito { background: #16a34a; }
-.toast--error { background: #dc2626; }
-.toast--info  { background: var(--blue); }
-
-/* ── Modal ── */
-.modal__fondo {
-  position: fixed; inset: 0; background: rgba(15,23,42,0.5);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 100; padding: 1rem;
-}
-.modal__caja {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg); width: 100%;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.15);
-  max-height: 90vh; overflow-y: auto; overflow-x: hidden;
-}
-.modal__cabecera {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
-}
-.modal__titulo { font-size: 1rem; font-weight: 700; color: var(--txt); }
-.modal__cerrar {
-  background: none; border: none; font-size: 1.4rem; color: var(--txt-3); line-height: 1;
-}
-.modal__cuerpo { padding: 1.25rem; }
+/* Boton dorado (falta en admin.css original) */
+.boton--dorado { background: var(--amber); color: #fff; border-color: var(--amber); }

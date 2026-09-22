@@ -6,6 +6,11 @@ import { CampoImagen } from '../../../components/CampoImagen';
 import { useTemporadaCategoria } from '../../../hooks/useTemporadaCategoria';
 
 const POSICIONES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
+const LADOS = [
+  { value: 'derecho', label: 'Derecho' },
+  { value: 'zurdo', label: 'Zurdo' },
+  { value: 'ambidiestro', label: 'Ambidiestro' },
+];
 
 export default function EquiposAdminPage() {
   const { notificar } = useToast();
@@ -351,6 +356,7 @@ function ModalAgregarJugador({ abierto, onCerrar, equipoInscritoId, onCreado }) 
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
   const [foto, setFoto] = useState('');
+  const [lado, setLado] = useState('');
   const [numero, setNumero] = useState('');
   const [posicion, setPosicion] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -371,6 +377,7 @@ function ModalAgregarJugador({ abierto, onCerrar, equipoInscritoId, onCreado }) 
           email: email || null,
           telefono: telefono || null,
           foto_url: foto || null,
+          lado: lado || null,
         });
         idJugador = nuevo.id;
       }
@@ -381,7 +388,7 @@ function ModalAgregarJugador({ abierto, onCerrar, equipoInscritoId, onCreado }) 
         posicion_principal: posicion || null,
       });
       setNombres(''); setApellidos(''); setFechaNacimiento(''); setEmail(''); setTelefono(''); setFoto('');
-      setJugadorId(''); setNumero(''); setPosicion('');
+      setLado(''); setJugadorId(''); setNumero(''); setPosicion('');
       onCreado();
     } catch (err) {
       notificar(err.message, 'error');
@@ -428,6 +435,15 @@ function ModalAgregarJugador({ abierto, onCerrar, equipoInscritoId, onCreado }) 
                 <input value={telefono} onChange={(e) => setTelefono(e.target.value)} />
               </div>
             </div>
+            <div className="campo--fila">
+              <div className="campo">
+                <label>Lado</label>
+                <select value={lado} onChange={(e) => setLado(e.target.value)}>
+                  <option value="">—</option>
+                  {LADOS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+            </div>
             <div className="campo">
               <label>Foto (opcional)</label>
               <CampoImagen endpoint="/uploads/foto-jugador" valor={foto} onCambiar={setFoto} />
@@ -471,7 +487,7 @@ function ModalAgregarJugador({ abierto, onCerrar, equipoInscritoId, onCreado }) 
 }
 
 // ---------------------------------------------------------------------
-// Modal: editar datos de contacto (fecha de nacimiento, correo, teléfono)
+// Modal: editar datos de contacto (fecha de nacimiento, correo, teléfono, lado)
 // de un jugador ya existente en el roster.
 // ---------------------------------------------------------------------
 function ModalEditarContacto({ jugadorId, nombreCompleto, onCerrar, onGuardado }) {
@@ -487,6 +503,7 @@ function ModalEditarContacto({ jugadorId, nombreCompleto, onCerrar, onGuardado }
       email: j.email || '',
       telefono: j.telefono || '',
       foto_url: j.foto_url || '',
+      lado: j.lado || '',
     }));
   }, [jugadorId]);
 
@@ -521,6 +538,13 @@ function ModalEditarContacto({ jugadorId, nombreCompleto, onCerrar, onGuardado }
           <div className="campo">
             <label>Teléfono (opcional)</label>
             <input value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
+          </div>
+          <div className="campo">
+            <label>Lado</label>
+            <select value={form.lado} onChange={(e) => set('lado', e.target.value)}>
+              <option value="">—</option>
+              {LADOS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+            </select>
           </div>
           <div className="campo">
             <label>Foto (opcional)</label>

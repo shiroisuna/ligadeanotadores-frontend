@@ -13,7 +13,7 @@ export default function ControlLanzadoresAdminPage() {
   } = useTemporadaCategoria();
 
   const [registros, setRegistros] = useState([]);
-  const [cargando, setCargando] = useState(false);
+  const [cargando,  setCargando]  = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
 
   function cargar() {
@@ -71,7 +71,8 @@ export default function ControlLanzadoresAdminPage() {
             <tr>
               <th style={{ textAlign: 'left' }}>Pitcher</th>
               <th style={{ textAlign: 'left' }}>Equipo</th>
-              <th>Último juego</th>
+              <th>Fecha</th>
+              <th>Hora</th>
               <th>Envíos</th>
               <th>IL</th>
               <th>Descanso req.</th>
@@ -83,26 +84,28 @@ export default function ControlLanzadoresAdminPage() {
           <tbody>
             {registros.map((r) => (
               <tr key={r.id}>
-                <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                  {r.nombres} {r.apellidos}
-                </td>
+                <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{r.nombres} {r.apellidos}</td>
                 <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{r.equipo}</td>
                 <td>{r.fecha}</td>
+                <td>{r.hora ? r.hora.slice(0,5) : '—'}</td>
                 <td>{r.envios}</td>
-                <td>{r.innings_l}</td>
+                <td>{r.innings_lanzados}</td>
                 <td>{r.dias_descanso_requeridos ?? 0} día(s)</td>
                 <td>{r.dias_desde_juego}</td>
                 <td>
                   <span style={{
                     padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700,
                     background: r.puede_lanzar_hoy ? 'rgba(62,142,90,0.12)' : 'rgba(192,57,43,0.10)',
-                    color: r.puede_lanzar_hoy ? 'var(--color-win)' : 'var(--color-clay)',
+                    color: r.puede_lanzar_hoy ? 'var(--color-win)' : '#b91c1c',
                   }}>
-                    {r.puede_lanzar_hoy ? '✓ Habilitado' : `⛔ Descanso (${r.dias_descanso_requeridos - r.dias_desde_juego} día(s) más)`}
+                    {r.puede_lanzar_hoy
+                      ? '✓ Habilitado'
+                      : `⛔ Descanso (${(r.dias_descanso_requeridos || 0) - (r.dias_desde_juego || 0)} día(s) más)`}
                   </span>
                 </td>
                 <td>
-                  <button className="boton boton--peligro" onClick={() => eliminar(r.id, `${r.nombres} ${r.apellidos}`)}>
+                  <button className="boton boton--peligro"
+                    onClick={() => eliminar(r.id, `${r.nombres} ${r.apellidos}`)}>
                     Quitar
                   </button>
                 </td>
@@ -125,16 +128,17 @@ export default function ControlLanzadoresAdminPage() {
 function ModalRegistrar({ abierto, onCerrar, temporadaCategoriaId, onCreado }) {
   const { notificar } = useToast();
   const [inscritos, setInscritos] = useState([]);
-  const [juegos, setJuegos] = useState([]);
-  const [roster, setRoster] = useState([]);
-  const [equipoId, setEquipoId] = useState('');
-  const [juegoId, setJuegoId] = useState('');
-  const [rosterId, setRosterId] = useState('');
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
-  const [envios, setEnvios] = useState(0);
-  const [inningsL, setInningsL] = useState(0);
-  const [obs, setObs] = useState('');
-  const [enviando, setEnviando] = useState(false);
+  const [juegos,    setJuegos]    = useState([]);
+  const [roster,    setRoster]    = useState([]);
+  const [equipoId,   setEquipoId]  = useState('');
+  const [juegoId,    setJuegoId]   = useState('');
+  const [rosterId,   setRosterId]  = useState('');
+  const [fecha,      setFecha]     = useState(new Date().toISOString().slice(0,10));
+  const [hora,       setHora]      = useState('');
+  const [envios,     setEnvios]    = useState(0);
+  const [inningsL,   setInningsL]  = useState(0);
+  const [obs,        setObs]       = useState('');
+  const [enviando,   setEnviando]  = useState(false);
 
   useEffect(() => {
     if (!abierto || !temporadaCategoriaId) return;
@@ -147,14 +151,25 @@ function ModalRegistrar({ abierto, onCerrar, temporadaCategoriaId, onCreado }) {
     api.get(`/jugadores/roster?equipo_inscrito_id=${equipoId}`).then(setRoster);
   }, [equipoId]);
 
+  // Al seleccionar un juego, autocompletar fecha y hora
+  useEffect(() => {
+    if (!juegoId) return;
+    const juego = juegos.find((j) => String(j.id) === String(juegoId));
+    if (juego) {
+      if (juego.fecha) setFecha(juego.fecha);
+      if (juego.hora)  setHora(juego.hora.slice(0,5));
+    }
+  }, [juegoId, juegos]);
+
   async function alEnviar(e) {
     e.preventDefault();
     setEnviando(true);
     try {
       await api.post('/control-lanzadores', {
-        roster_id: rosterId, juego_id: juegoId, fecha,
-        envios: Number(envios), innings_l: Number(inningsL),
-        observacion: obs || null,
+        roster_id: rosterId, juego_id: juegoId || null,
+        fecha, hora: hora || null,
+        envios: Number(envios), innings_lanzados: Number(inningsL),
+        condicion: obs || null,
       });
       onCreado();
     } catch (err) {
@@ -178,17 +193,21 @@ function ModalRegistrar({ abierto, onCerrar, temporadaCategoriaId, onCreado }) {
           <label>Pitcher</label>
           <select required value={rosterId} onChange={(e) => setRosterId(e.target.value)}>
             <option value="">Selecciona…</option>
-            {roster.filter((r) => r.posicion_principal === 'P' || true).map((r) => (
-              <option key={r.id} value={r.id}>#{r.numero_camiseta} {r.nombres} {r.apellidos}</option>
+            {roster.map((r) => (
+              <option key={r.id} value={r.id}>
+                #{r.numero_camiseta} {r.nombres} {r.apellidos}
+              </option>
             ))}
           </select>
         </div>
         <div className="campo">
-          <label>Juego</label>
-          <select required value={juegoId} onChange={(e) => setJuegoId(e.target.value)}>
-            <option value="">Selecciona…</option>
+          <label>Juego (opcional)</label>
+          <select value={juegoId} onChange={(e) => setJuegoId(e.target.value)}>
+            <option value="">Sin vincular</option>
             {juegos.map((j) => (
-              <option key={j.id} value={j.id}>{j.fecha} — {j.equipo_local} vs {j.equipo_visitante}</option>
+              <option key={j.id} value={j.id}>
+                {j.fecha} — {j.equipo_local} vs {j.equipo_visitante}
+              </option>
             ))}
           </select>
         </div>
@@ -197,6 +216,12 @@ function ModalRegistrar({ abierto, onCerrar, temporadaCategoriaId, onCreado }) {
             <label>Fecha del juego</label>
             <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </div>
+          <div className="campo">
+            <label>Hora</label>
+            <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+          </div>
+        </div>
+        <div className="campo--fila">
           <div className="campo">
             <label>Envíos (pitches)</label>
             <input type="number" min={0} required value={envios} onChange={(e) => setEnvios(e.target.value)} />

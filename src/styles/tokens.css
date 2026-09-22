@@ -1,56 +1,75 @@
 /* ======================================================
-   TOKENS — paleta original (fondo claro, azul/dorado)
+   DESIGN TOKENS — LABSMI
+   Paleta original: azul navy, dorado, fondo crema
    ====================================================== */
 :root {
-  /* Fondos — claro como el diseño original */
-  --bg:          #f1f5f9;  /* slate-100 — fondo general crema/gris claro */
-  --bg-2:        #ffffff;  /* blanco — cards y paneles */
-  --bg-3:        #f8fafc;  /* casi blanco — inputs */
-  --border:      #e2e8f0;  /* slate-200 */
+  /* ── Colores base ── */
+  --color-field:      #1e3a8a;
+  --color-chalk:      #f1f5f9;
+  --color-amber:      #d97706;
+  --color-amber-dim:  #b45309;
+  --color-amber-bg:   #fef3c7;
+  --color-ink:        #0f172a;
+  --color-ink-soft:   #64748b;
+  --color-white:      #ffffff;
+  --color-line:       #e2e8f0;
+  --color-win:        #15803d;
+  --color-loss:       #b91c1c;
+  --color-clay:       #b91c1c;
 
-  /* Header — azul oscuro como el original */
-  --hdr-bg:      #1e3a8a;  /* blue-900 */
-  --hdr-border:  #1e40af;  /* blue-800 */
-  --hdr-txt:     #ffffff;
+  /* ── Aliases para compatibilidad con admin.css y otras páginas ── */
+  --bg:           #f1f5f9;
+  --bg-2:         #ffffff;
+  --bg-3:         #f8fafc;
+  --border:       #e2e8f0;
+  --hdr-bg:       #1e3a8a;
+  --hdr-border:   #1e40af;
+  --hdr-txt:      #ffffff;
   --hdr-txt-soft: rgba(255,255,255,0.75);
+  --blue:         #1e3a8a;
+  --blue-soft:    rgba(30,58,138,0.08);
+  --blue-txt:     #1e40af;
+  --green:        #15803d;
+  --green-soft:   rgba(21,128,61,0.10);
+  --red:          #b91c1c;
+  --red-soft:     rgba(185,28,28,0.08);
+  --amber:        #d97706;
+  --amber-txt:    #b45309;
+  --txt:          #0f172a;
+  --txt-2:        #1e293b;
+  --txt-3:        #64748b;
+  --txt-4:        #94a3b8;
 
-  /* Acento */
-  --blue:        #1e3a8a;  /* blue-900 — igual que el header */
-  --blue-soft:   rgba(30,58,138,0.08);
-  --blue-txt:    #1e40af;  /* blue-800 */
+  /* ── Tipografías ── */
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-sans:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Victoria / derrota */
-  --green:       #16a34a;
-  --green-soft:  rgba(22,163,74,0.10);
-  --red:         #dc2626;
-  --red-soft:    rgba(220,38,38,0.08);
+  /* ── Espaciados ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 2.5rem;
+  --space-8: 3rem;
 
-  /* Dorado/ámbar — acento secundario */
-  --amber:       #d97706;
-  --amber-txt:   #b45309;
-  --amber-bg:    #fef3c7;
-
-  /* Texto */
-  --txt:         #0f172a;  /* slate-900 */
-  --txt-2:       #1e293b;  /* slate-800 */
-  --txt-3:       #64748b;  /* slate-500 */
-  --txt-4:       #94a3b8;  /* slate-400 */
-
-  /* Tipografías */
-  --font-sans:   'Inter', system-ui, sans-serif;
-  --font-mono:   'JetBrains Mono', monospace;
-
-  /* Radios */
-  --r:           0.5rem;
-  --r-lg:        0.75rem;
+  /* ── Radios ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --r:         0.5rem;
+  --r-lg:      0.75rem;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: var(--font-sans);
-  background: var(--bg);
-  color: var(--txt);
+  font-family: var(--font-display);
+  background: var(--color-chalk);
+  color: var(--color-ink);
   min-height: 100vh;
 }
 
@@ -59,14 +78,19 @@ a { text-decoration: none; color: inherit; }
 
 input, select, textarea {
   font-family: inherit;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  color: var(--txt);
-  border-radius: var(--r);
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  color: var(--color-ink);
+  border-radius: var(--radius-sm);
   padding: 0.4rem 0.6rem;
   font-size: 0.875rem;
 }
-input:focus, select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(30,58,138,0.12); }
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--color-field);
+  box-shadow: 0 0 0 2px rgba(30,58,138,0.1);
+}
 
 .contenedor { max-width: 1280px; margin: 0 auto; padding: 0 1rem; }
-.vacio { text-align: center; color: var(--txt-3); font-size: 0.875rem; padding: 2rem; }
+.vacio { text-align: center; color: var(--color-ink-soft); font-size: 0.875rem; padding: 2rem; }
+.cifra { font-family: var(--font-mono); }

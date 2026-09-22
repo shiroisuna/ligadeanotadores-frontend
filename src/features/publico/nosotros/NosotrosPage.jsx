@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Marcador } from '../../../components/Marcador';
 import { api } from '../../../api/client';
 
 export default function NosotrosPage() {
@@ -6,51 +7,42 @@ export default function NosotrosPage() {
   useEffect(() => { api.get('/contenido').then(setC); }, []);
 
   return (
-    <main className="contenedor" style={{ padding: '1.5rem 1rem', maxWidth: 780 }}>
-      <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1.5rem' }}>Nosotros</h1>
-
-      {!c && <div className="vacio">Cargando…</div>}
-
-      {c && (
-        <>
-          {(c.vision || c.mision) && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-              {c.vision && (
-                <div className="card" style={{ padding: '1rem' }}>
-                  <h2 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--blue-txt)', marginBottom: '0.5rem' }}>Visión</h2>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--txt-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{c.vision}</p>
-                </div>
-              )}
-              {c.mision && (
-                <div className="card" style={{ padding: '1rem' }}>
-                  <h2 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--blue-txt)', marginBottom: '0.5rem' }}>Misión</h2>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--txt-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{c.mision}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Contacto</h2>
-          <div className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {[
-              ['Dirección', c.contacto_direccion],
-              ['Teléfono', c.contacto_telefono],
-              ['Correo', c.contacto_email, `mailto:${c.contacto_email}`],
-              ['WhatsApp', c.contacto_whatsapp, `https://wa.me/${(c.contacto_whatsapp||'').replace(/\D/g,'')}`],
-              ['Facebook', c.contacto_facebook, c.contacto_facebook],
-              ['Instagram', c.contacto_instagram, c.contacto_instagram],
-            ].filter(([, v]) => v).map(([label, val, href]) => (
-              <div key={label} style={{ fontSize: '0.85rem', color: 'var(--txt-2)' }}>
-                <strong style={{ color: 'var(--txt-3)' }}>{label}:</strong>{' '}
-                {href ? <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-txt)' }}>{val}</a> : val}
+    <div>
+      <Marcador />
+      <main className="contenedor" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)', maxWidth: 780 }}>
+        <h1 style={{ fontSize: 28, marginBottom: 'var(--space-6)' }}>Nosotros</h1>
+        {!c && <div className="vacio">Cargando…</div>}
+        {c && (
+          <>
+            {(c.vision || c.mision) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
+                {c.vision && (
+                  <div className="tarjeta-lista" style={{ padding: 'var(--space-4)' }}>
+                    <h2 style={{ fontSize: 14, marginBottom: 8, color: 'var(--color-field)' }}>Visión</h2>
+                    <p style={{ fontFamily: 'var(--font-body)', lineHeight: 1.6, fontSize: 14, whiteSpace: 'pre-wrap' }}>{c.vision}</p>
+                  </div>
+                )}
+                {c.mision && (
+                  <div className="tarjeta-lista" style={{ padding: 'var(--space-4)' }}>
+                    <h2 style={{ fontSize: 14, marginBottom: 8, color: 'var(--color-field)' }}>Misión</h2>
+                    <p style={{ fontFamily: 'var(--font-body)', lineHeight: 1.6, fontSize: 14, whiteSpace: 'pre-wrap' }}>{c.mision}</p>
+                  </div>
+                )}
               </div>
-            ))}
-            {!c.contacto_direccion && !c.contacto_telefono && !c.contacto_email && (
-              <div className="vacio">Sin datos de contacto todavía.</div>
             )}
-          </div>
-        </>
-      )}
-    </main>
+            <h2 style={{ fontSize: 20, marginBottom: 'var(--space-4)' }}>Contacto</h2>
+            <div className="tarjeta-lista" style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+              {c.contacto_direccion && <div><strong>Dirección:</strong> {c.contacto_direccion}</div>}
+              {c.contacto_telefono && <div><strong>Teléfono:</strong> {c.contacto_telefono}</div>}
+              {c.contacto_email && <div><strong>Correo:</strong> <a href={`mailto:${c.contacto_email}`} style={{ color: 'var(--blue-txt)' }}>{c.contacto_email}</a></div>}
+              {c.contacto_whatsapp && <div><strong>WhatsApp:</strong> <a href={`https://wa.me/${c.contacto_whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-txt)' }}>{c.contacto_whatsapp}</a></div>}
+              {c.contacto_facebook && <div><strong>Facebook:</strong> <a href={c.contacto_facebook} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-txt)' }}>{c.contacto_facebook}</a></div>}
+              {c.contacto_instagram && <div><strong>Instagram:</strong> <a href={c.contacto_instagram} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-txt)' }}>{c.contacto_instagram}</a></div>}
+              {!c.contacto_direccion && !c.contacto_telefono && !c.contacto_email && <div className="vacio">Sin datos de contacto todavía.</div>}
+            </div>
+          </>
+        )}
+      </main>
+    </div>
   );
 }

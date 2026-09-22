@@ -45,7 +45,7 @@ export default function CategoriasAdminPage() {
           <thead>
             <tr>
               <th style={{ textAlign: 'left' }}>Nombre</th>
-              <th style={{ textAlign: 'left' }}>Disciplina</th>
+              <th style={{ textAlign: 'left' }}>Liga</th>
               <th>Pitcheo</th>
               <th>Innings</th>
               <th style={{ textAlign: 'left' }}>Nivel pos.</th>
@@ -110,7 +110,7 @@ function FormCategoria({ form, setForm, disciplinas, onDisciplinaCreada, onSubmi
     <Modal titulo={titulo} abierto onCerrar={onCerrar}>
       <form onSubmit={onSubmit}>
         <div className="campo">
-          <label>Disciplina</label>
+          <label>Liga</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <select value={form.disciplina_id || ''} onChange={(e) => set('disciplina_id', e.target.value)} style={{ flex: 1 }}>
               <option value="">Selecciona…</option>

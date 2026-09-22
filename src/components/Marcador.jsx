@@ -1,89 +1,153 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useTemporadaCategoria } from '../hooks/useTemporadaCategoria';
-import { PlayerCardModal } from './PlayerCardModal';
+
+const RAMAS = [
+  { id: 'menor',   label: 'Béisbol Menor' },
+  { id: 'softbol', label: 'Softbol' },
+  { id: 'mayor',   label: 'Béisbol Mayor' },
+];
+
+const NAV = [
+  { to: '/',                    label: 'Inicio' },
+  { to: '/resultados',          label: 'Resultados' },
+  { to: '/calendario',          label: 'Calendario' },
+  { to: '/posiciones',          label: 'Posiciones' },
+  { to: '/lideres',             label: 'Líderes' },
+  { to: '/defensiva',           label: 'Defensiva' },
+  //{ to: '/ofensiva',            label: 'Ofensiva' },
+  { to: '/colectivo',           label: 'Colectivo' },
+  //{ to: '/estadisticas-equipo', label: 'Por equipo' },
+  
+  
+  { to: '/torneo',              label: 'Torneo' },
+  { to: '/nosotros',            label: 'Nosotros' },
+  { to: '/fichas-equipos',      label: 'Fichas de Equipos' },
+  { to: '/reporte-equipo',      label: 'Reporte por Equipo' },
+  { to: '/incidencias',         label: 'Incidencias' },
+];
 
 export function Marcador({ onCambiarCategoria }) {
   const location = useLocation();
+  const navigate  = useNavigate();
   const { usuario, logout } = useAuth();
-  const [modalTarjeta, setModalTarjeta] = useState(false);
   const {
-    temporadas, categorias, categoria, error,
+    temporadas, categorias, categoria, conteoPorRama,
     temporadaId, setTemporadaId,
     temporadaCategoriaId, setTemporadaCategoriaId,
+    rama, setRama,
   } = useTemporadaCategoria();
 
+  // Notificar a la página cuando cambia la categoría seleccionada
   useEffect(() => {
     if (temporadaCategoriaId) onCambiarCategoria?.(temporadaCategoriaId, categoria);
-  }, [temporadaCategoriaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [temporadaCategoriaId]); // eslint-disable-line
 
-  const enlace = (to, texto) => (
-    <Link to={to} className={`marcador__link ${location.pathname === to ? 'marcador__link--activo' : ''}`}>
-      {texto}
-    </Link>
-  );
+  function alCerrarSesion() {
+    logout();
+    navigate('/');
+  }
 
   return (
     <header className="marcador">
-      {error && (
-        <div className="marcador__error">
-          No se pudo conectar con la API ({error}). Verifica que el backend esté corriendo en {import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}.
-        </div>
-      )}
-
+      {/* ── Franja superior: logo + título + auth ── */}
       <div className="contenedor marcador__fila">
         <Link to="/" className="marcador__marca">
           <img src="/logo-labsmi.jpg" alt="LABSMI" className="marcador__logo" />
-          LIGA DE ANOTADORES <span>·</span> INDEPENDENCIA
+          <span>LIGA DE ANOTADORES <span className="marcador__sep">·</span> INDEPENDENCIA</span>
         </Link>
 
-        <div className="marcador__selector">
-          <label className="marcador__label" htmlFor="temporada">Temporada</label>
-          <select id="temporada" className="marcador__select" value={temporadaId} onChange={(e) => setTemporadaId(e.target.value)}>
-            {temporadas.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-          </select>
+        {/* Selectores de temporada y categoría */}
+        <div className="marcador__selectores">
+          <div className="marcador__selector">
+            <label className="marcador__label">Temporada</label>
+            <select
+              className="marcador__select"
+              value={temporadaId}
+              onChange={(e) => setTemporadaId(e.target.value)}
+            >
+              {temporadas.map((t) => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="marcador__selector">
+            <label className="marcador__label">Categoría</label>
+            <select
+              className="marcador__select"
+              value={temporadaCategoriaId}
+              onChange={(e) => setTemporadaCategoriaId(e.target.value)}
+            >
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>{c.categoria_nombre}</option>
+              ))}
+              {categorias.length === 0 && (
+                <option value="">Sin categorías</option>
+              )}
+            </select>
+          </div>
         </div>
 
-        <div className="marcador__selector">
-          <label className="marcador__label" htmlFor="categoria">Categoría</label>
-          <select id="categoria" className="marcador__select" value={temporadaCategoriaId} onChange={(e) => setTemporadaCategoriaId(e.target.value)}>
-            {categorias.map((c) => <option key={c.id} value={c.id}>{c.categoria_nombre}</option>)}
-          </select>
-        </div>
-
-        <nav className="marcador__nav">
-          {enlace('/resultados', 'Resultados')}
-          {enlace('/calendario', 'Calendario')}
-          {enlace('/posiciones', 'Posiciones')}
-          {enlace('/lideres', 'Líderes')}
-          {enlace('/estadisticas-equipo', 'Por equipo')}
-          {enlace('/juegos-por-equipo', 'Cruces')}
-          {enlace('/nosotros', 'Nosotros')}
-        </nav>
-
+        {/* Auth widget */}
         <div className="marcador__auth">
-          {!usuario && <Link to="/login" className="marcador__auth-boton">Entrar</Link>}
-
+          {!usuario && (
+            <Link to="/login" className="marcador__link">Entrar</Link>
+          )}
           {usuario?.rol === 'administrador' && (
             <>
-              <Link to="/admin" className="marcador__auth-boton marcador__auth-boton--dorado">Panel admin</Link>
-              <button className="marcador__auth-salir" onClick={logout}>Salir</button>
+              <span className="marcador__email">{usuario.email}</span>
+              <Link to="/admin" className="marcador__link marcador__link--panel">Panel admin</Link>
+              <button className="marcador__link marcador__link--salir" onClick={alCerrarSesion}>Salir</button>
             </>
           )}
-
+          {usuario?.rol === 'anotador' && (
+            <>
+              <span className="marcador__email">{usuario.email}</span>
+              <Link to="/admin/estadisticas" className="marcador__link marcador__link--panel">Cargar stats</Link>
+              <button className="marcador__link marcador__link--salir" onClick={alCerrarSesion}>Salir</button>
+            </>
+          )}
           {usuario?.rol === 'jugador' && (
             <>
-              <button className="marcador__auth-boton marcador__auth-boton--dorado" onClick={() => setModalTarjeta(true)}>
-                Mi tarjeta
-              </button>
-              <button className="marcador__auth-salir" onClick={logout}>Salir</button>
+              <span className="marcador__email">{usuario.email}</span>
+              <button className="marcador__link marcador__link--panel" id="mi-tarjeta-btn">Mi tarjeta</button>
+              <button className="marcador__link marcador__link--salir" onClick={alCerrarSesion}>Salir</button>
             </>
           )}
         </div>
       </div>
 
-      <PlayerCardModal abierto={modalTarjeta} onCerrar={() => setModalTarjeta(false)} />
+      {/* ── Pestañas de liga (solo si hay categorías en esa rama) ── */}
+      <div className="marcador__ramas-wrap">
+        <div className="contenedor marcador__ramas">
+          <div className="marcador__tabs">
+            {RAMAS.filter((r) => conteoPorRama[r.id] > 0).map((r) => (
+              <button
+                key={r.id}
+                className={`marcador__tab ${rama === r.id ? 'marcador__tab--activo' : ''}`}
+                onClick={() => setRama(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Barra de navegación ── */}
+      <nav className="marcador__nav contenedor">
+        {NAV.map((n) => (
+          <Link
+            key={n.to}
+            to={n.to}
+            className={`marcador__navlink ${location.pathname === n.to ? 'marcador__navlink--activo' : ''}`}
+          >
+            {n.label}
+          </Link>
+        ))}
+      </nav>
     </header>
   );
 }
