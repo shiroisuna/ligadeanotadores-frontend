@@ -2,6 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../api/client';
+import { useToast } from './Toast';
+import { Modal } from './Modal';
 
 const ENLACES_ADMIN = [
   { to: '/admin',                    label: 'Resumen',                  fin: true },
@@ -11,7 +13,10 @@ const ENLACES_ADMIN = [
   { to: '/admin/juegos',             label: 'Calendario y juegos' },
   { to: '/admin/estadisticas',       label: 'Estadísticas por juego' },
   { to: '/admin/incidencias',        label: 'Incidencias' },
+  { to: '/admin/usuarios',           label: 'Usuarios y accesos' },
   { to: '/admin/anotadores',         label: 'Anotadores' },
+  { to: '/admin/estadios',           label: 'Estadios' },
+  { to: '/admin/arbitros',           label: 'Árbitros' },
   { to: '/admin/control-lanzadores', label: 'Control de lanzadores' },
   { to: '/admin/torneos',            label: 'Torneos' },
   { to: '/admin/aprobaciones',       label: 'Aprobaciones',             badge: true },
@@ -32,6 +37,7 @@ export function AdminShell() {
   const esAnotador = usuario?.rol === 'anotador';
   const enlaces    = esAnotador ? ENLACES_ANOTADOR : ENLACES_ADMIN;
   const [pendientes, setPendientes] = useState(0);
+  const [modalClave, setModalClave] = useState(false);
 
   useEffect(() => {
     if (esAnotador) return;
@@ -90,12 +96,56 @@ export function AdminShell() {
               ({usuario?.rol})
             </span>
           </span>
-          <button className="admin__salir" onClick={logout}>Cerrar sesión</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="admin__salir" onClick={() => setModalClave(true)}>Cambiar mi clave</button>
+            <button className="admin__salir" onClick={logout}>Cerrar sesión</button>
+          </div>
         </header>
         <div className="admin__contenido">
           <Outlet />
         </div>
       </div>
+      {modalClave && <ModalMiClave onCerrar={() => setModalClave(false)} />}
     </div>
+  );
+}
+
+function ModalMiClave({ onCerrar }) {
+  const { notificar } = useToast();
+  const [actual, setActual] = useState('');
+  const [nueva, setNueva] = useState('');
+  const [repetir, setRepetir] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  async function alEnviar(e) {
+    e.preventDefault();
+    if (nueva !== repetir) { notificar('Las contraseñas nuevas no coinciden', 'error'); return; }
+    setEnviando(true);
+    try {
+      await api.put('/usuarios/mi-password', { password_actual: actual, password_nueva: nueva });
+      notificar('Clave actualizada', 'exito');
+      onCerrar();
+    } catch (err) {
+      notificar(err.message, 'error');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Modal titulo="Cambiar mi clave" abierto onCerrar={onCerrar} ancho={420}>
+      <form onSubmit={alEnviar}>
+        <div className="campo"><label>Clave actual</label>
+          <input type="password" required value={actual} onChange={(e) => setActual(e.target.value)} /></div>
+        <div className="campo"><label>Clave nueva (mín. 6)</label>
+          <input type="password" required minLength={6} value={nueva} onChange={(e) => setNueva(e.target.value)} /></div>
+        <div className="campo"><label>Repetir clave nueva</label>
+          <input type="password" required minLength={6} value={repetir} onChange={(e) => setRepetir(e.target.value)} /></div>
+        <div className="formulario__acciones">
+          <button type="button" className="boton boton--fantasma" onClick={onCerrar}>Cancelar</button>
+          <button type="submit" className="boton boton--primario" disabled={enviando}>{enviando ? 'Guardando…' : 'Guardar'}</button>
+        </div>
+      </form>
+    </Modal>
   );
 }

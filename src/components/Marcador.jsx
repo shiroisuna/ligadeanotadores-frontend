@@ -61,7 +61,7 @@ export function Marcador({ onCambiarCategoria }) {
         {/* Selectores de temporada y categoría */}
         <div className="marcador__selectores">
           <div className="marcador__selector">
-            <label className="marcador__label">Temporada</label>
+            <label className="marcador__label">Liga</label>
             <select
               className="marcador__select"
               value={temporadaId}

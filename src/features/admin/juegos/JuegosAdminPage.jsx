@@ -77,8 +77,8 @@ export default function JuegosAdminPage() {
           <thead>
             <tr>
               <th style={{ textAlign: 'left' }}>Fecha</th>
-              <th style={{ textAlign: 'left' }}>Local</th>
               <th style={{ textAlign: 'left' }}>Visitante</th>
+              <th style={{ textAlign: 'left' }}>Local (HC)</th>
               <th>Marcador</th>
               <th style={{ textAlign: 'left' }}>Estado</th>
               <th></th>
@@ -93,15 +93,16 @@ export default function JuegosAdminPage() {
                   <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                     {j.fecha} {j.hora ? j.hora.slice(0, 5) : ''}
                   </td>
-                  <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{j.equipo_local}</td>
                   <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{j.equipo_visitante}</td>
-                  <td>{j.carreras_local ?? '—'} - {j.carreras_visitante ?? '—'}</td>
+                  <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{j.equipo_local}</td>
+                  <td>{j.carreras_visitante ?? '—'} - {j.carreras_local ?? '—'}</td>
                   <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{j.estado}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
                     {perteneceAlAnotador ? (
                       <>
                         <button className="boton boton--fantasma boton--chico" onClick={() => setJuegoEditar(j)}>Resultado</button>
-                        <Link className="boton boton--primario boton--chico" to={`/admin/estadisticas/${j.id}`}>  Box score</Link>
+                        <Link className="boton boton--primario boton--chico" to={`/admin/estadisticas/${j.id}`}>Estadísticas</Link>
+                        <Link className="boton boton--primario boton--chico" to={`/admin/boxscore/${j.id}`}>Box score</Link>
                       </>
                     ) : (
                       <span style={{ fontSize: 12, color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)' }}>—</span>
@@ -172,17 +173,17 @@ function ModalNuevoJuego({ abierto, onCerrar, temporadaCategoriaId, inscritos, o
     <Modal titulo="Programar juego" abierto={abierto} onCerrar={onCerrar}>
       <form onSubmit={alEnviar}>
         <div className="campo">
-          <label>Equipo local</label>
-          <select required value={equipoLocal} onChange={(e) => setEquipoLocal(e.target.value)}>
-            <option value="">Selecciona…</option>
-            {inscritos.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-          </select>
-        </div>
-        <div className="campo">
-          <label>Equipo visitante</label>
+          <label>Equipo visitante (primero)</label>
           <select required value={equipoVisitante} onChange={(e) => setEquipoVisitante(e.target.value)}>
             <option value="">Selecciona…</option>
             {inscritos.filter((e) => String(e.id) !== equipoLocal).map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+          </select>
+        </div>
+        <div className="campo">
+          <label>Equipo local / home club</label>
+          <select required value={equipoLocal} onChange={(e) => setEquipoLocal(e.target.value)}>
+            <option value="">Selecciona…</option>
+            {inscritos.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
         </div>
         <div className="campo">
@@ -218,7 +219,8 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
   const [form, setForm] = useState({
     estado: juego.estado,
     ronda: juego.ronda ?? '',
-    entidad: juego.entidad ?? 'LOABMI',
+    entidad_arbitros: juego.entidad_arbitros ?? 'LOABMI',
+    entidad_anotador: juego.entidad_anotador ?? 'LOABMI',
     fecha_fin: juego.fecha_fin ?? '',
     hora_inicio: juego.hora_inicio ?? '',
     hora_final: juego.hora_final ?? '',
@@ -231,6 +233,7 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
     errores_visitante: juego.errores_visitante ?? '',
     anotador_oficial: juego.anotador_oficial ?? '',
     equipo_ganador_id: juego.equipo_ganador_id ?? '',
+    mvp_roster_id: juego.mvp_roster_id ?? '',
   });
   const [enviando, setEnviando] = useState(false);
   const necesitaGanador = ESTADOS_CON_GANADOR.includes(form.estado);
@@ -238,14 +241,21 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
   // ── Árbitros: catálogo completo + cuáles están marcados para este juego ──
   const [catalogoArbitros, setCatalogoArbitros] = useState([]);
   const [arbitrosSeleccionados, setArbitrosSeleccionados] = useState([]); // [arbitro_id, ...]
+  const [rosterMvp, setRosterMvp] = useState([]);
 
   useEffect(() => {
     Promise.all([
       api.get('/arbitros'),
       api.get(`/arbitros/juego/${juego.id}`),
-    ]).then(([catalogo, actuales]) => {
+      api.get(`/jugadores/roster?equipo_inscrito_id=${juego.equipo_local_id}`),
+      api.get(`/jugadores/roster?equipo_inscrito_id=${juego.equipo_visitante_id}`),
+    ]).then(([catalogo, actuales, rl, rv]) => {
       setCatalogoArbitros(catalogo);
       setArbitrosSeleccionados(actuales.map((a) => a.id));
+      setRosterMvp([
+        ...rv.map((r) => ({ ...r, equipoEtiqueta: juego.equipo_visitante })),
+        ...rl.map((r) => ({ ...r, equipoEtiqueta: juego.equipo_local })),
+      ]);
     });
   }, [juego.id]);
 
@@ -268,6 +278,7 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
         hora_inicio: form.hora_inicio || null,
         hora_final: form.hora_final || null,
         duracion_minutos: form.duracion_minutos || null,
+        mvp_roster_id: form.mvp_roster_id || null,
         equipo_ganador_id: necesitaGanador ? form.equipo_ganador_id : null,
       });
       await api.put(`/arbitros/juego/${juego.id}`, {
@@ -282,7 +293,7 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
   }
 
   return (
-    <Modal titulo={`Resultado — ${juego.equipo_local} vs ${juego.equipo_visitante}`} abierto onCerrar={onCerrar} ancho={560}>
+    <Modal titulo={`Resultado — ${juego.equipo_visitante} (V) vs ${juego.equipo_local} (HC)`} abierto onCerrar={onCerrar} ancho={560}>
       <form onSubmit={alEnviar}>
         <div className="campo--fila">
           <div className="campo">
@@ -305,40 +316,40 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
             <label>Equipo ganador</label>
             <select required value={form.equipo_ganador_id} onChange={(e) => set('equipo_ganador_id', e.target.value)}>
               <option value="">Selecciona…</option>
-              <option value={juego.equipo_local_id}>{juego.equipo_local}</option>
               <option value={juego.equipo_visitante_id}>{juego.equipo_visitante}</option>
+              <option value={juego.equipo_local_id}>{juego.equipo_local}</option>
             </select>
           </div>
         )}
 
         <div className="campo--fila">
           <div className="campo">
-            <label>Carreras local</label>
-            <input type="number" value={form.carreras_local} onChange={(e) => set('carreras_local', e.target.value)} />
-          </div>
-          <div className="campo">
-            <label>Carreras visitante</label>
+            <label>Carreras visitante (V)</label>
             <input type="number" value={form.carreras_visitante} onChange={(e) => set('carreras_visitante', e.target.value)} />
           </div>
+          <div className="campo">
+            <label>Carreras local (HC)</label>
+            <input type="number" value={form.carreras_local} onChange={(e) => set('carreras_local', e.target.value)} />
+          </div>
         </div>
         <div className="campo--fila">
           <div className="campo">
-            <label>Hits local</label>
-            <input type="number" value={form.hits_local} onChange={(e) => set('hits_local', e.target.value)} />
-          </div>
-          <div className="campo">
-            <label>Hits visitante</label>
+            <label>Hits visitante (V)</label>
             <input type="number" value={form.hits_visitante} onChange={(e) => set('hits_visitante', e.target.value)} />
           </div>
+          <div className="campo">
+            <label>Hits local (HC)</label>
+            <input type="number" value={form.hits_local} onChange={(e) => set('hits_local', e.target.value)} />
+          </div>
         </div>
         <div className="campo--fila">
           <div className="campo">
-            <label>Errores local</label>
-            <input type="number" value={form.errores_local} onChange={(e) => set('errores_local', e.target.value)} />
+            <label>Errores visitante (V)</label>
+            <input type="number" value={form.errores_visitante} onChange={(e) => set('errores_visitante', e.target.value)} />
           </div>
           <div className="campo">
-            <label>Errores visitante</label>
-            <input type="number" value={form.errores_visitante} onChange={(e) => set('errores_visitante', e.target.value)} />
+            <label>Errores local (HC)</label>
+            <input type="number" value={form.errores_local} onChange={(e) => set('errores_local', e.target.value)} />
           </div>
         </div>
 
@@ -366,11 +377,6 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
         </div>
 
         <div className="campo">
-          <label>Entidad</label>
-          <input value={form.entidad} onChange={(e) => set('entidad', e.target.value)} />
-        </div>
-
-        <div className="campo">
           <label>Árbitros que participaron</label>
           {catalogoArbitros.length === 0 && (
             <p style={{ fontSize: 12, color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)' }}>
@@ -390,10 +396,29 @@ function ModalResultado({ juego, onCerrar, onGuardado }) {
             ))}
           </div>
         </div>
+        <div className="campo">
+          <label>Entidad de los árbitros</label>
+          <input value={form.entidad_arbitros} onChange={(e) => set('entidad_arbitros', e.target.value)} />
+        </div>
 
         <div className="campo">
           <label>Anotador oficial</label>
           <input value={form.anotador_oficial} onChange={(e) => set('anotador_oficial', e.target.value)} />
+        </div>
+        <div className="campo">
+          <label>Entidad del anotador</label>
+          <input value={form.entidad_anotador} onChange={(e) => set('entidad_anotador', e.target.value)} />
+        </div>
+        <div className="campo">
+          <label>Jugador más valioso del juego (opcional)</label>
+          <select value={form.mvp_roster_id} onChange={(e) => set('mvp_roster_id', e.target.value)}>
+            <option value="">Sin especificar</option>
+            {rosterMvp.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.numero_camiseta != null ? `#${r.numero_camiseta} ` : ''}{r.nombres} {r.apellidos} ({r.equipoEtiqueta})
+              </option>
+            ))}
+          </select>
         </div>
         <div className="formulario__acciones">
           <button type="button" className="boton boton--fantasma" onClick={onCerrar}>Cancelar</button>

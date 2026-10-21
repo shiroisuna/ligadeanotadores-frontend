@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../../../api/client';
 import { useToast } from '../../../components/Toast';
 import { InputNumerico } from '../../../components/InputNumerico';
+import { navegarConFlechas } from '../../../components/Navegacionceldas';
 
 // ── Columnas de bateo con AL y BA calculados (solo lectura) ───────────
 const COLS_BATEO = [
@@ -19,6 +20,7 @@ const COLS_BATEO = [
 const COLS_PITCHEO = [
   ['i',  'I'],  ['r',  'R'],  ['c',  'C'],  ['b',  'B'],
   ['g',  'G'],  ['p',  'P'],  ['s',  'S'],  ['e',  'E'],
+  ['tl', 'T.L'],  // total de lanzamientos
   ['vb', 'VB'], ['hp', 'HP'], ['h2', 'H2'], ['h3', 'H3'], ['hr', 'HR'],
   ['il', 'IL', '0.01'],
   ['cp', 'CP'], ['cl', 'CL'], ['so', 'SO'], ['bb', 'BB'],
@@ -47,6 +49,10 @@ function fusionar(vacia, existente, cols) {
 function calcAL(f) {
   return (Number(f.vb)||0) + (Number(f.bb)||0) + (Number(f.sh)||0) +
          (Number(f.sf)||0) + (Number(f.gp)||0) + (Number(f.in_)||0);
+}
+// Total de lances = Outs + Asistencias + Errores (automático)
+function calcTL(f) {
+  return (Number(f.o)||0) + (Number(f.a)||0) + (Number(f.e)||0);
 }
 function calcBA(f) {
   return (Number(f.hc)||0) + (Number(f.h2)||0) + 2*(Number(f.h3)||0) + 3*(Number(f.hr)||0);
@@ -79,9 +85,10 @@ export default function EstadisticasCargaPage() {
         api.get(`/jugadores/roster?equipo_inscrito_id=${j.equipo_visitante_id}`),
       ]);
 
+      // Primero el VISITANTE y luego el LOCAL (home club)
       const roster = [
-        ...rl.map((r) => ({ ...r, equipo: j.equipo_local })),
-        ...rv.map((r) => ({ ...r, equipo: j.equipo_visitante })),
+        ...rv.map((r) => ({ ...r, equipo: `${j.equipo_visitante} (V)` })),
+        ...rl.map((r) => ({ ...r, equipo: `${j.equipo_local} (HC)` })),
       ];
       setRosterLocal(rl);
       setRosterVisitante(rv);
@@ -137,7 +144,7 @@ export default function EstadisticasCargaPage() {
     setGuardando((g) => ({ ...g, [tipo]: true }));
     try {
       const lineas = tipo === 'fildeo'
-        ? filasFildeo.filter((f) => f.roster_id).map((f) => aNumero(f, ['roster_id', 'posicion', 'nombres', 'apellidos', 'numero_camiseta', 'equipo']))
+        ? filasFildeo.filter((f) => f.roster_id).map((f) => aNumero({ ...f, tl: calcTL(f) }, ['roster_id', 'posicion', 'nombres', 'apellidos', 'numero_camiseta', 'equipo']))
         : tipo === 'pitcheo' ? filasPitcheo.filter((f) => f.roster_id).map((f) => aNumero(f, ['roster_id', 'nombres', 'apellidos', 'numero_camiseta', 'equipo']))
         : filasBateo.map((f) => aNumero({ ...f, al: calcAL(f), ba: calcBA(f) }, ['roster_id', 'nombres', 'apellidos', 'numero_camiseta', 'equipo']));
       await api.put(`/estadisticas/${juegoId}/${tipo}`, { lineas });
@@ -152,9 +159,10 @@ export default function EstadisticasCargaPage() {
   if (cargando) return <div className="vacio">Cargando…</div>;
   if (!juego)   return <div className="vacio">Juego no encontrado.</div>;
 
+  // Visitante primero, luego local (home club)
   const todosRoster = [
-    ...rosterLocal.map((r)    => ({ ...r, equipo: juego.equipo_local })),
-    ...rosterVisitante.map((r) => ({ ...r, equipo: juego.equipo_visitante })),
+    ...rosterVisitante.map((r) => ({ ...r, equipo: `${juego.equipo_visitante} (V)` })),
+    ...rosterLocal.map((r)     => ({ ...r, equipo: `${juego.equipo_local} (HC)` })),
   ];
 
   return (
@@ -162,14 +170,14 @@ export default function EstadisticasCargaPage() {
       <div className="admin__cabecera">
         <div>
           <h1>Estadísticas del juego</h1>
-          <p>{juego.equipo_local} vs {juego.equipo_visitante} — {juego.fecha}</p>
+          <p>{juego.equipo_visitante} (visitante) vs {juego.equipo_local} (home club) — {juego.fecha}</p>
         </div>
         <Link to="/admin/estadisticas" className="boton boton--fantasma">← Volver</Link>
       </div>
 
       {/* ── BATEO ── */}
       <Seccion titulo="Bateo" onGuardar={() => guardar('bateo')} guardando={guardando.bateo}>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }} onKeyDown={navegarConFlechas}>
           <table className="tabla tabla-editable">
             <thead>
               <tr>
@@ -232,7 +240,7 @@ export default function EstadisticasCargaPage() {
             + Agregar fila
           </button>
         }>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }} onKeyDown={navegarConFlechas}>
           <table className="tabla tabla-editable">
             <thead>
               <tr>
@@ -295,7 +303,7 @@ export default function EstadisticasCargaPage() {
             + Agregar fila
           </button>
         }>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }} onKeyDown={navegarConFlechas}>
           <table className="tabla tabla-editable">
             <thead>
               <tr>
@@ -333,7 +341,10 @@ export default function EstadisticasCargaPage() {
                     </td>
                     {COLS_FILDEO_C.map(([k]) => (
                       <td key={k}>
-                        {cols.find(([ck]) => ck === k) ? (
+                        {k === 'tl' ? (
+                          <input type="text" readOnly tabIndex={-1} value={calcTL(f)} title="TL = O + A + E (automático)"
+                            style={{ width: 40, background: '#f0f4ff', cursor: 'not-allowed', fontWeight: 700 }} />
+                        ) : cols.find(([ck]) => ck === k) ? (
                           <InputNumerico value={f[k] ?? 0} permitirDecimales={k === 'ij'} style={{ width: 40 }}
                             onChange={(v) => setFildeo(idx, k, v)} />
                         ) : (

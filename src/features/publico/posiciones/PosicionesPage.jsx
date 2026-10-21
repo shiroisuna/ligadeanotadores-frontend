@@ -6,6 +6,29 @@ import { api } from '../../../api/client';
 
 function n(v) { return v === null || v === undefined ? '—' : v; }
 
+// Convierte un decimal (ej. 2.67) a fracción de innings (ej. "2 2/3"),
+// redondeando al más cercano entre 1/3, 1/2 y 2/3.
+function formatInningsFraccion(valor) {
+  const num = Number(valor);
+  if (Number.isNaN(num)) return '—';
+  const entero = Math.floor(num);
+  const frac = num - entero;
+  const FRACCIONES = [
+    { valor: 0, texto: '' },
+    { valor: 1 / 3, texto: '1/3' },
+    { valor: 1 / 2, texto: '1/2' },
+    { valor: 2 / 3, texto: '2/3' },
+  ];
+  let mejor = FRACCIONES[0];
+  let menorDif = Math.abs(frac - mejor.valor);
+  for (const f of FRACCIONES) {
+    const dif = Math.abs(frac - f.valor);
+    if (dif < menorDif) { mejor = f; menorDif = dif; }
+  }
+  if (!mejor.texto) return `${entero}`;
+  return entero > 0 ? `${entero} ${mejor.texto}` : mejor.texto;
+}
+
 export default function PosicionesPage() {
   const [temporadaCategoriaId, setTemporadaCategoriaId] = useState(null);
   const [categoria, setCategoria] = useState(null);
@@ -24,8 +47,6 @@ export default function PosicionesPage() {
       .then(setFilas).finally(() => setCargando(false));
   }, [temporadaCategoriaId]);
 
-  // Se restaura el modo "avanzado": si la categoría tiene
-  // nivel_standings = 'avanzado', se muestran también IJO/M1/IJD/M2/BCE.
   const avanzado = categoria?.nivel_standings === 'avanzado';
 
   const grupos = [];
@@ -82,9 +103,9 @@ export default function PosicionesPage() {
                       <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{n(f.ave)}</td>
                       <td>{n(f.ptos)}</td>
                       <td>{f.carreras_anotadas}</td>
-                      {avanzado && <><td>{n(f.ijo)}</td><td>{n(f.media1)}</td></>}
+                      {avanzado && <><td>{formatInningsFraccion(f.ijo)}</td><td>{n(f.media1)}</td></>}
                       <td>{f.carreras_permitidas}</td>
-                      {avanzado && <><td>{n(f.ijd)}</td><td>{n(f.media2)}</td><td>{n(f.bce)}</td></>}
+                      {avanzado && <><td>{formatInningsFraccion(f.ijd)}</td><td>{n(f.media2)}</td><td>{n(f.bce)}</td></>}
                       <td>{f.dc > 0 ? '+' : ''}{f.dc}</td>
                       <td>{f.rend != null ? `${f.rend}%` : '—'}</td>
                     </tr>

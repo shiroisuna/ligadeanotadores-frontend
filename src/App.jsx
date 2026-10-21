@@ -36,12 +36,16 @@ import ControlLanzadoresAdminPage from './features/admin/control-lanzadores/Cont
 import IncidenciasListaPage from './features/admin/incidencias/IncidenciasListaPage';
 import IncidenciasCargaPage from './features/admin/incidencias/IncidenciasCargaPage';
 import AnotadoresAdminPage from './features/admin/anotadores/AnotadoresAdminPage';
+import UsuariosAdminPage from './features/admin/usuarios/UsuariosAdminPage';
+import EstadiosAdminPage from './features/admin/estadios/EstadiosAdminPage';
+import ArbitrosAdminPage from './features/admin/arbitros/ArbitrosAdminPage';
 
 
 //Torneos
 import TorneoPage from './features/publico/torneos/TorneoPage';
 import TorneoAdminPage from './features/admin/torneos/TorneoAdminPage';
 import AprobacionesAdminPage from './features/admin/aprobaciones/AprobacionesAdminPage';
+import BoxScoreAdminPage from './features/admin/boxscore/BoxScoreAdminPage';
 
 
 
@@ -95,11 +99,15 @@ export default function App() {
                 <Route path="incidencias" element={<IncidenciasListaPage />} />
                 <Route path="incidencias/:juegoId" element={<IncidenciasCargaPage />} />
                 <Route path="anotadores" element={<AnotadoresAdminPage />} />
+                <Route path="usuarios" element={<RequireRole roles={['administrador']}><UsuariosAdminPage /></RequireRole>} />
+                <Route path="estadios" element={<RequireRole roles={['administrador']}><EstadiosAdminPage /></RequireRole>} />
+                <Route path="arbitros" element={<RequireRole roles={['administrador']}><ArbitrosAdminPage /></RequireRole>} />
                 <Route path="fotos" element={<FotosAdminPage />} />
                 <Route path="contenido" element={<ContenidoAdminPage />} />
                 <Route path="pagos" element={<PagosAdminPage />} />
                 <Route path="torneos" element={<TorneoAdminPage />} />
                 <Route path="aprobaciones" element={<AprobacionesAdminPage />} />
+                <Route path="boxscore/:juegoId" element={<BoxScoreAdminPage />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />
