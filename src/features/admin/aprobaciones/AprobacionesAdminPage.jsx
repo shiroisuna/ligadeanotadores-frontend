@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../../api/client';
 import { useToast } from '../../../components/Toast';
 
@@ -63,7 +64,7 @@ export default function AprobacionesAdminPage() {
       <div className="admin__cabecera">
         <div>
           <h1>Aprobaciones pendientes</h1>
-          <p>Revisa los resultados y estadísticas cargados por los anotadores antes de publicarlos.</p>
+          <p>Todo sale del box score: revísalo, corrige lo que haga falta y aprueba para publicarlo.</p>
         </div>
         {juegos.length > 0 && (
           <span style={{
@@ -113,7 +114,9 @@ export default function AprobacionesAdminPage() {
                 Estado: {j.estado}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Link className="boton boton--fantasma" to={`/admin/boxscore/${j.id}`}>Ver box score</Link>
+              <Link className="boton boton--fantasma" to={`/admin/estadisticas/${j.id}`}>Revisar / corregir</Link>
               <button
                 className="boton boton--primario"
                 onClick={() => aprobar(j.id)}

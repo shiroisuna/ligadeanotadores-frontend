@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { api } from '../../../api/client';
+import { formatInnings } from '../../../utils/innings';
 
 const TABS = [
   { id: 'bateo', label: 'Bateo' },
@@ -122,7 +123,7 @@ export default function ColectivoPage() {
                     {tab === 'pitcheo' && (
                       <>
                         <td style={{ fontWeight: 700 }}>{formatAve(eq.promedio_bateo_permitido)}</td>
-                        <td>{eq.g}</td><td>{eq.p}</td><td>{eq.s}</td><td>{eq.il}</td>
+                        <td>{eq.g}</td><td>{eq.p}</td><td>{eq.s}</td><td>{formatInnings(eq.il, '0')}</td>
                         <td>{eq.so}</td><td>{eq.bb}</td><td>{eq.cl}</td><td>{Number(eq.efectividad || 0).toFixed(2)}</td>
                       </>
                     )}

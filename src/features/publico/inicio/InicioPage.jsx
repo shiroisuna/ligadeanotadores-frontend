@@ -96,7 +96,7 @@ export default function InicioPage() {
                         <th>#</th>
                         <th style={{ textAlign: 'left' }}>Equipo</th>
                         <th>JJ</th><th>JG</th><th>JP</th>
-                        <th>AVE</th><th>PTOS</th>
+                        <th>PTOS</th><th>AVE</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -112,8 +112,8 @@ export default function InicioPage() {
                           <td>{f.jj}</td>
                           <td style={{ color: 'var(--color-win)', fontWeight: 600 }}>{f.jg}</td>
                           <td style={{ color: 'var(--color-loss)', fontWeight: 600 }}>{f.jp}</td>
-                          <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{f.ave}</td>
-                          <td>{f.ptos}</td>
+                          <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{f.ptos}</td>
+                          <td>{f.ave}</td>
                         </tr>
                       ))}
                     </tbody>

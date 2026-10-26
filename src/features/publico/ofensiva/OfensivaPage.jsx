@@ -7,7 +7,8 @@ import { api } from '../../../api/client';
 const POSICIONES = [
   ['P', 'LANZADOR'], ['C', 'RECEPTOR'], ['1B', '1RA BASE'], ['2B', '2DA BASE'],
   ['3B', '3RA BASE'], ['SS', 'CAMPO CORTO'], ['LF', 'JARDINERO IZQUIERDO'],
-  ['CF', 'JARDINERO CENTRAL'], ['RF', 'JARDINERO DERECHO'], ['DH', 'BATEADOR DESIGNADO'],
+  ['CF', 'JARDINERO CENTRAL'], ['RF', 'JARDINERO DERECHO'], ['SHF', 'SHORT FIELD'],
+  ['DH', 'BATEADOR DESIGNADO'], ['BA', 'BATEADOR ADICIONAL'],
 ];
 
 export default function OfensivaPage() {

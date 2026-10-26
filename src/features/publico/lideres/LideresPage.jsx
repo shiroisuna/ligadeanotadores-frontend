@@ -3,6 +3,7 @@ import { Marcador } from "../../../components/Marcador";
 import { TeamBadge } from "../../../components/TeamBadge";
 import { usePlayerModal } from "../../../components/PlayerModalProvider";
 import { api } from "../../../api/client";
+import { formatInnings } from '../../../utils/innings';
 
 // [clave del stat, título de la tarjeta, ícono, dirección ('desc'|'asc')]
 const TARJETAS_BATEO = [
@@ -36,33 +37,11 @@ function formatValor(stat, valor) {
     return Number(valor).toFixed(2);
   }
   if (stat === 'innings_lanzados') {
-    return formatInningsFraccion(valor);
+    return formatInnings(valor);
   }
   return valor;
 }
 
-// Convierte un decimal (ej. 1.33) a fracción de innings (ej. "1 1/3"),
-// redondeando al más cercano entre 1/3, 1/2 y 2/3.
-function formatInningsFraccion(valor) {
-  const n = Number(valor);
-  if (Number.isNaN(n)) return '—';
-  const entero = Math.floor(n);
-  const frac = n - entero;
-  const FRACCIONES = [
-    { valor: 0, texto: '' },
-    { valor: 1 / 3, texto: '1/3' },
-    { valor: 1 / 2, texto: '1/2' },
-    { valor: 2 / 3, texto: '2/3' },
-  ];
-  let mejor = FRACCIONES[0];
-  let menorDif = Math.abs(frac - mejor.valor);
-  for (const f of FRACCIONES) {
-    const dif = Math.abs(frac - f.valor);
-    if (dif < menorDif) { mejor = f; menorDif = dif; }
-  }
-  if (!mejor.texto) return `${entero}`;
-  return entero > 0 ? `${entero} ${mejor.texto}` : mejor.texto;
-}
 
 function TarjetaLider({ titulo, icono, filas, statKey, direccion, abrirJugador, depto }) {
   const ordenadas = [...filas].sort((a, b) => {
@@ -85,7 +64,7 @@ function TarjetaLider({ titulo, icono, filas, statKey, direccion, abrirJugador, 
       {ordenadas.map((f, i) => {
         const extra = depto === 'bateo'
           ? `VB: ${f.vb ?? '—'} · HC: ${f.hits ?? '—'}`
-          : `IL: ${f.innings_lanzados != null ? formatInningsFraccion(f.innings_lanzados) : '—'} · JG: ${f.ganados ?? '—'}`;
+          : `IL: ${f.innings_lanzados != null ? formatInnings(f.innings_lanzados) : '—'} · JG: ${f.ganados ?? '—'}`;
         return (
           <div key={f.roster_id} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -132,7 +111,7 @@ function SeccionGrupo({ nombreGrupo, mostrarTitulo, filas, campoUmbral, tarjetas
         )}
         {umbral > 0 && (
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--color-ink-soft)' }}>
-            Mínimo: <b>{umbral}</b> {campoUmbral === 'al' ? 'AL' : 'IL'}
+            Mínimo: <b>{campoUmbral === 'al' ? umbral : formatInnings(umbral, '0')}</b> {campoUmbral === 'al' ? 'AL' : 'IL'}
           </span>
         )}
       </div>

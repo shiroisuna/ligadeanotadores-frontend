@@ -3,6 +3,7 @@ import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { usePlayerModal } from '../../../components/PlayerModalProvider';
 import { api } from '../../../api/client';
+import { formatInnings } from '../../../utils/innings';
 
 function formatAve(valor) {
   const n = Number(valor) || 0;
@@ -52,7 +53,7 @@ export default function DefensivaPage() {
 
             {g.jugadores.length === 0 ? (
               <div className="vacio">
-                Ningún jugador alcanza el mínimo de {g.umbral_ij} innings jugados en esta posición
+                Ningún jugador alcanza el mínimo de {formatInnings(g.umbral_ij, '0')} innings jugados en esta posición
                 (2/3 del promedio: {g.media_ij}).
               </div>
             ) : (
@@ -61,7 +62,7 @@ export default function DefensivaPage() {
                   fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)',
                   padding: '0 var(--space-3)', margin: '0 0 var(--space-2)',
                 }}>
-                  Para calificar, el jugador debe tener al menos <b>{g.umbral_ij} innings jugados</b> (2/3 de la media: <b>{g.media_ij}</b>).
+                  Para calificar, el jugador debe tener al menos <b>{formatInnings(g.umbral_ij, '0')} innings jugados</b> (2/3 de la media: <b>{formatInnings(g.media_ij, '0')}</b>).
                 </p>
                 <div style={{ overflowX: 'auto' }}>
                   <table className="tabla">
@@ -89,7 +90,7 @@ export default function DefensivaPage() {
                               {j.nombres} {j.apellidos}
                             </button>
                           </td>
-                          <td>{j.ij}</td><td>{j.o}</td><td>{j.a}</td><td>{j.e}</td><td>{j.tl}</td>
+                          <td>{formatInnings(j.ij, '0')}</td><td>{j.o}</td><td>{j.a}</td><td>{j.e}</td><td>{j.tl}</td>
                           <td style={{ fontWeight: 700 }}>{formatAve(j.aved)}</td>
                         </tr>
                       ))}

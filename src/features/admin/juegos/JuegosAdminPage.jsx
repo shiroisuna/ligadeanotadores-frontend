@@ -101,8 +101,8 @@ export default function JuegosAdminPage() {
                     {perteneceAlAnotador ? (
                       <>
                         <button className="boton boton--fantasma boton--chico" onClick={() => setJuegoEditar(j)}>Resultado</button>
-                        <Link className="boton boton--primario boton--chico" to={`/admin/estadisticas/${j.id}`}>Estadísticas</Link>
                         <Link className="boton boton--primario boton--chico" to={`/admin/boxscore/${j.id}`}>Box score</Link>
+                        <Link className="boton boton--fantasma boton--chico" to={`/admin/estadisticas/${j.id}`}>Revisar</Link>
                       </>
                     ) : (
                       <span style={{ fontSize: 12, color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)' }}>—</span>

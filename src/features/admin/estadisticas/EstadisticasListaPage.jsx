@@ -35,11 +35,11 @@ export default function EstadisticasListaPage() {
     <div>
       <div className="admin__cabecera">
         <div>
-          <h1>Estadísticas por juego</h1>
+          <h1>Box score y estadísticas</h1>
           <p>
             {esAnotador
               ? 'Juegos que tienes asignados para anotar.'
-              : 'Selecciona un juego para cargar o editar sus estadísticas de bateo, pitcheo y fildeo.'}
+              : 'Llena el box score del juego; las estadísticas salen de ahí y quedan pendientes para revisar y aprobar.'}
           </p>
         </div>
         <div className="campo--fila">
@@ -101,12 +101,12 @@ export default function EstadisticasListaPage() {
                 <td>
                   <EstadoBadge juego_id={j.id} tipo="fildeo" />
                 </td>
-                <td>
-                  <Link
-                    className="boton boton--primario boton--chico"
-                    to={`/admin/estadisticas/${j.id}`}
-                  >
-                    Cargar
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <Link className="boton boton--primario boton--chico" to={`/admin/boxscore/${j.id}`}>
+                    Box score
+                  </Link>{' '}
+                  <Link className="boton boton--fantasma boton--chico" to={`/admin/estadisticas/${j.id}`}>
+                    Revisar
                   </Link>
                 </td>
               </tr>

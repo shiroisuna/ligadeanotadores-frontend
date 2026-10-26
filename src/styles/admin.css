@@ -386,3 +386,63 @@
   .admin__nav { flex-direction: row; flex-wrap: wrap; }
   .panel-doble { grid-template-columns: 1fr; }
 }
+
+/* ── Línea de anotación del box score: compacta y centrada ── */
+.tabla.linea-anotacion {
+  width: auto;
+  margin: 0 auto;
+}
+.linea-anotacion th,
+.linea-anotacion td {
+  text-align: center;
+  min-width: 38px;
+}
+.linea-anotacion .linea-anotacion__equipo {
+  text-align: left;
+  min-width: 170px;
+  padding-right: 1rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.linea-anotacion .linea-anotacion__total {
+  min-width: 44px;
+  font-weight: 700;
+  background: rgba(255, 193, 7, 0.12);
+}
+.linea-anotacion th.linea-anotacion__total { color: var(--amber); }
+
+.nota-chica {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-ink-soft);
+  padding: 0 var(--space-3) var(--space-3);
+  margin: 0;
+}
+
+/* ── Pasos: box score → revisión → aprobación ── */
+.flujo-boxscore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 var(--space-5);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+.flujo-boxscore__paso {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--blue-txt);
+  text-decoration: none;
+  font-weight: 600;
+}
+.flujo-boxscore__paso--activo {
+  background: var(--blue-txt);
+  color: #fff;
+  border-color: var(--blue-txt);
+}
+.flujo-boxscore__flecha { color: var(--color-ink-soft); }

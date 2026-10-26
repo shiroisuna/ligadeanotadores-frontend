@@ -3,6 +3,7 @@ import { Modal } from './Modal';
 import { TeamBadge } from './TeamBadge';
 import { useToast } from './Toast';
 import { api } from '../api/client';
+import { formatInnings } from '../utils/innings';
 
 export function PlayerCardModal({ abierto, onCerrar }) {
   const { notificar } = useToast();
@@ -119,7 +120,7 @@ export function PlayerCardModal({ abierto, onCerrar }) {
                     <div><span className="cifra">{p.ganados}-{p.perdidos}</span><label>G-P</label></div>
                     <div><span className="cifra">{p.efectividad}</span><label>EFE</label></div>
                     <div><span className="cifra">{p.ponches}</span><label>SO</label></div>
-                    <div><span className="cifra">{p.innings_lanzados}</span><label>IL</label></div>
+                    <div><span className="cifra">{formatInnings(p.innings_lanzados, '0')}</span><label>IL</label></div>
                   </div>
                 )}
 

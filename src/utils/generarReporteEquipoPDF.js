@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatInnings } from './innings';
 
 const MORADO = [90, 30, 143];   // encabezados de tabla
 const DORADO = [230, 180, 20];  // acentos de texto
@@ -56,8 +57,8 @@ export function generarReporteEquipoPDF(datos) {
   let y = tituloSeccion('1. TABLA DE POSICIONES', 105);
   autoTable(doc, {
     startY: y,
-    head: [['POS', 'EQUIPO', 'JJ', 'JG', 'JP', 'JE', 'PTS']],
-    body: posiciones.map((p, i) => [i + 1, p.equipo, p.jj, p.jg, p.jp, p.je, p.ptos]),
+    head: [['POS', 'EQUIPO', 'JJ', 'JG', 'JP', 'JE', 'PTS', 'AVE']],
+    body: posiciones.map((p, i) => [i + 1, p.equipo, p.jj, p.jg, p.jp, p.je, p.ptos, p.ave ?? '']),
     headStyles: { fillColor: MORADO, textColor: 255, fontStyle: 'bold' },
     didParseCell: (data) => {
       if (data.section === 'body' && posiciones[data.row.index]?.equipo === equipo) {
@@ -95,7 +96,7 @@ export function generarReporteEquipoPDF(datos) {
     startY: y,
     head: [['#', 'JUGADOR', 'I.J', 'OUTS', 'ASIST', 'ERROR', 'TOTAL', 'AVED']],
     body: fildeoOrdenado.map((f, i) => [
-      i + 1, `${f.nombres} ${f.apellidos}`, f.ij, f.outs, f.asistencias, f.errores, f.total, fmt3(f.aved),
+      i + 1, `${f.nombres} ${f.apellidos}`, formatInnings(f.ij, '0'), f.outs, f.asistencias, f.errores, f.total, fmt3(f.aved),
     ]),
     headStyles: { fillColor: MORADO, textColor: 255, fontStyle: 'bold' },
     columnStyles: { 1: { halign: 'left' }, 7: { textColor: [180, 30, 30], fontStyle: 'bold' } },
@@ -112,7 +113,7 @@ export function generarReporteEquipoPDF(datos) {
       startY: y,
       head: [['#', 'LANZADOR', 'IL', 'JG', 'JP', 'SO', 'BB', 'CL', 'ERA']],
       body: pitcheoOrdenado.map((f, i) => [
-        i + 1, `${f.nombres} ${f.apellidos}`, f.innings_lanzados, f.ganados, f.perdidos,
+        i + 1, `${f.nombres} ${f.apellidos}`, formatInnings(f.innings_lanzados, '0'), f.ganados, f.perdidos,
         f.ponches, f.bases_por_bolas, f.carreras_limpias, fmt2(f.efectividad),
       ]),
       headStyles: { fillColor: MORADO, textColor: 255, fontStyle: 'bold' },

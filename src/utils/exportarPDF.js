@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatInnings } from './innings';
 
 const TITULO   = 'LIGA DE ANOTADORES DE BÉISBOL Y SOFTBOL';
 const SUBTITULO = 'Municipio Independencia — Santa Teresa del Tuy';
@@ -215,7 +216,7 @@ export async function exportarResultadoPDF({ juego, estadisticas }) {
         p.numero_camiseta ?? '—',
         (p.nombres || '') + ' ' + (p.apellidos || ''),
         p.equipo || '—',
-        p.g, p.p, p.s, p.il, p.vb, p.hp, p.so, p.bb, p.cl,
+        p.g, p.p, p.s, formatInnings(p.il, '0'), p.vb, p.hp, p.so, p.bb, p.cl,
         p.il > 0 ? (p.cl * 7 / p.il).toFixed(2) : '0.00',
       ]),
       startY: y,
@@ -353,8 +354,8 @@ export async function exportarReporteEquipoPDF({
   let yTabla = tituloReporte('1', 'TABLA DE POSICIONES');
   autoTable(doc, {
     startY: yTabla,
-    head: [['Pos', 'Equipo', 'JJ', 'JG', 'JP', 'JE', 'PTS']],
-    body: posiciones.map((p, i) => [i + 1, p.equipo, p.jj, p.jg, p.jp, p.je, p.ptos]),
+    head: [['Pos', 'Equipo', 'JJ', 'JG', 'JP', 'JE', 'PTS', 'AVE']],
+    body: posiciones.map((p, i) => [i + 1, p.equipo, p.jj, p.jg, p.jp, p.je, p.ptos, p.ave ?? '']),
     margin: { left: 15, right: 15 },
     styles: { fontSize: 9, cellPadding: 2 },
     headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
@@ -396,7 +397,7 @@ export async function exportarReporteEquipoPDF({
     startY: yTabla,
     head: [['#', 'Jugador', 'I.J', 'Outs', 'Asist', 'Error', 'Total', 'AVED']],
     body: fildeoOrdenado.map((f, i) => [
-      i + 1, `${f.nombres} ${f.apellidos}`, f.ij, f.outs, f.asistencias, f.errores, f.total, fmt3(f.aved),
+      i + 1, `${f.nombres} ${f.apellidos}`, formatInnings(f.ij, '0'), f.outs, f.asistencias, f.errores, f.total, fmt3(f.aved),
     ]),
     margin: { left: 15, right: 15 },
     styles: { fontSize: 8, cellPadding: 1.8 },
@@ -415,7 +416,7 @@ export async function exportarReporteEquipoPDF({
       startY: yTabla,
       head: [['#', 'Lanzador', 'IL', 'JG', 'JP', 'SO', 'BB', 'CL', 'ERA']],
       body: pitcheoOrdenado.map((f, i) => [
-        i + 1, `${f.nombres} ${f.apellidos}`, f.innings_lanzados, f.ganados, f.perdidos,
+        i + 1, `${f.nombres} ${f.apellidos}`, formatInnings(f.innings_lanzados, '0'), f.ganados, f.perdidos,
         f.ponches, f.bases_por_bolas, f.carreras_limpias, fmt2(f.efectividad),
       ]),
       margin: { left: 15, right: 15 },

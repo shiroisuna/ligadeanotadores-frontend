@@ -3,30 +3,18 @@ import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import MatrizCruces from '../../../components/MatrizCruces';
 import { api } from '../../../api/client';
+import { formatInnings } from '../../../utils/innings';
 
 function n(v) { return v === null || v === undefined ? '—' : v; }
 
-// Convierte un decimal (ej. 2.67) a fracción de innings (ej. "2 2/3"),
-// redondeando al más cercano entre 1/3, 1/2 y 2/3.
-function formatInningsFraccion(valor) {
-  const num = Number(valor);
-  if (Number.isNaN(num)) return '—';
-  const entero = Math.floor(num);
-  const frac = num - entero;
-  const FRACCIONES = [
-    { valor: 0, texto: '' },
-    { valor: 1 / 3, texto: '1/3' },
-    { valor: 1 / 2, texto: '1/2' },
-    { valor: 2 / 3, texto: '2/3' },
-  ];
-  let mejor = FRACCIONES[0];
-  let menorDif = Math.abs(frac - mejor.valor);
-  for (const f of FRACCIONES) {
-    const dif = Math.abs(frac - f.valor);
-    if (dif < menorDif) { mejor = f; menorDif = dif; }
-  }
-  if (!mejor.texto) return `${entero}`;
-  return entero > 0 ? `${entero} ${mejor.texto}` : mejor.texto;
+// Nivel de la tabla según la categoría:
+//   sencillo → JJ, JG, JP, JE, PTOS, AVE (Semillas)
+//   basico   → + C.A, C.P, D.C, REND
+//   avanzado → + IJO, M1, IJD, M2, BCE
+function nivelTabla(categoria) {
+  const nivel = categoria?.nivel_standings || 'basico';
+  if (nivel === 'basico' && /semilla/i.test(categoria?.categoria_nombre || '')) return 'sencillo';
+  return nivel;
 }
 
 export default function PosicionesPage() {
@@ -47,7 +35,9 @@ export default function PosicionesPage() {
       .then(setFilas).finally(() => setCargando(false));
   }, [temporadaCategoriaId]);
 
-  const avanzado = categoria?.nivel_standings === 'avanzado';
+  const nivel = nivelTabla(categoria);
+  const sencilla = nivel === 'sencillo';
+  const avanzado = nivel === 'avanzado';
 
   const grupos = [];
   for (const f of filas) {
@@ -79,11 +69,12 @@ export default function PosicionesPage() {
                     <th>Pos</th>
                     <th style={{ textAlign: 'left' }}>Equipo</th>
                     <th>JJ</th><th>JG</th><th>JP</th><th>JE</th>
-                    <th>AVE</th><th>PTOS</th><th>C.A</th>
+                    <th>PTOS</th><th>AVE</th>
+                    {!sencilla && <th>C.A</th>}
                     {avanzado && <><th>IJO</th><th>M1</th></>}
-                    <th>C.P</th>
+                    {!sencilla && <th>C.P</th>}
                     {avanzado && <><th>IJD</th><th>M2</th><th>BCE</th></>}
-                    <th>D.C</th><th>REND</th>
+                    {!sencilla && <><th>D.C</th><th>REND</th></>}
                   </tr>
                 </thead>
                 <tbody>
@@ -100,14 +91,16 @@ export default function PosicionesPage() {
                       <td style={{ color: 'var(--color-win)', fontWeight: 600 }}>{f.jg}</td>
                       <td style={{ color: 'var(--color-loss)', fontWeight: 600 }}>{f.jp}</td>
                       <td>{f.je}</td>
-                      <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{n(f.ave)}</td>
-                      <td>{n(f.ptos)}</td>
-                      <td>{f.carreras_anotadas}</td>
-                      {avanzado && <><td>{formatInningsFraccion(f.ijo)}</td><td>{n(f.media1)}</td></>}
-                      <td>{f.carreras_permitidas}</td>
-                      {avanzado && <><td>{formatInningsFraccion(f.ijd)}</td><td>{n(f.media2)}</td><td>{n(f.bce)}</td></>}
-                      <td>{f.dc > 0 ? '+' : ''}{f.dc}</td>
-                      <td>{f.rend != null ? `${f.rend}%` : '—'}</td>
+                      <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{n(f.ptos)}</td>
+                      <td>{n(f.ave)}</td>
+                      {!sencilla && <td>{f.carreras_anotadas}</td>}
+                      {avanzado && <><td>{formatInnings(f.ijo)}</td><td>{n(f.media1)}</td></>}
+                      {!sencilla && <td>{f.carreras_permitidas}</td>}
+                      {avanzado && <><td>{formatInnings(f.ijd)}</td><td>{n(f.media2)}</td><td>{n(f.bce)}</td></>}
+                      {!sencilla && <>
+                        <td>{f.dc > 0 ? '+' : ''}{f.dc}</td>
+                        <td>{f.rend != null ? `${f.rend}%` : '—'}</td>
+                      </>}
                     </tr>
                   ))}
                 </tbody>

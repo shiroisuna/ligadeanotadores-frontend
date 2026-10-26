@@ -3,6 +3,7 @@ import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { usePlayerModal } from '../../../components/PlayerModalProvider';
 import { api } from '../../../api/client';
+import { formatInnings } from '../../../utils/innings';
 
 export default function EquipoStatsPage() {
   const { abrirJugador } = usePlayerModal();
@@ -136,7 +137,7 @@ export default function EquipoStatsPage() {
                                   </button>
                                 </td>
                                 <td>{j.ganados}</td><td>{j.perdidos}</td><td>{j.salvados}</td>
-                                <td>{j.innings_lanzados}</td><td>{j.ponches}</td>
+                                <td>{formatInnings(j.innings_lanzados, '0')}</td><td>{j.ponches}</td>
                                 <td>{j.carreras_limpias}</td><td>{j.efectividad}</td>
                               </tr>
                             ))}

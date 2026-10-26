@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { api } from '../../../api/client';
+import { formatInnings } from '../../../utils/innings';
 
 function Estadistica({ etiqueta, valor }) {
   return (
@@ -81,7 +82,7 @@ export default function JugadorDetallePage() {
                 <Estadistica etiqueta="Ganados" valor={p.ganados} />
                 <Estadistica etiqueta="Perdidos" valor={p.perdidos} />
                 <Estadistica etiqueta="Salvados" valor={p.salvados} />
-                <Estadistica etiqueta="Innings lanzados" valor={p.innings_lanzados} />
+                <Estadistica etiqueta="Innings lanzados" valor={formatInnings(p.innings_lanzados, '0')} />
                 <Estadistica etiqueta="Ponches" valor={p.ponches} />
                 <Estadistica etiqueta="Carreras limpias" valor={p.carreras_limpias} />
                 <Estadistica etiqueta="Efectividad" valor={p.efectividad} />

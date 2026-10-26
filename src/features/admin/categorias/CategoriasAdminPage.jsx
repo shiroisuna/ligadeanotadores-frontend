@@ -141,6 +141,7 @@ function FormCategoria({ form, setForm, disciplinas, onDisciplinaCreada, onSubmi
           <div className="campo">
             <label>Nivel tabla de posiciones</label>
             <select value={form.nivel_standings || 'basico'} onChange={(e) => set('nivel_standings', e.target.value)}>
+              <option value="sencillo">Sencilla (Semillas: JJ, JG, JP, JE, PTOS, AVE)</option>
               <option value="basico">Básico</option>
               <option value="avanzado">Avanzado (IJO/MEDIA1/IJD/MEDIA2/BCE)</option>
             </select>

@@ -3,6 +3,8 @@ import { api } from '../../../api/client';
 import { useToast } from '../../../components/Toast';
 import { Modal } from '../../../components/Modal';
 import { useTemporadaCategoria } from '../../../hooks/useTemporadaCategoria';
+import { InputInnings } from '../../../components/InputInnings';
+import { formatInnings } from '../../../utils/innings';
 
 export default function ControlLanzadoresAdminPage() {
   const { notificar } = useToast();
@@ -89,7 +91,7 @@ export default function ControlLanzadoresAdminPage() {
                 <td>{r.fecha}</td>
                 <td>{r.hora ? r.hora.slice(0,5) : '—'}</td>
                 <td>{r.envios}</td>
-                <td>{r.innings_lanzados}</td>
+                <td>{formatInnings(r.innings_lanzados, '0')}</td>
                 <td>{r.dias_descanso_requeridos ?? 0} día(s)</td>
                 <td>{r.dias_desde_juego}</td>
                 <td>
@@ -228,7 +230,7 @@ function ModalRegistrar({ abierto, onCerrar, temporadaCategoriaId, onCreado }) {
           </div>
           <div className="campo">
             <label>Innings lanzados</label>
-            <input type="number" min={0} step="0.1" value={inningsL} onChange={(e) => setInningsL(e.target.value)} />
+            <InputInnings value={inningsL} onChange={setInningsL} placeholder="Ej: 3,67 = 3 2/3" />
           </div>
         </div>
         <div className="campo">

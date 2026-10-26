@@ -4,8 +4,9 @@ import { TeamBadge } from '../../../components/TeamBadge';
 import { usePlayerModal } from '../../../components/PlayerModalProvider';
 import { api } from '../../../api/client';
 import { exportarIncidenciasPDF } from '../../../utils/exportarPDF';
+import { formatInnings } from '../../../utils/innings';
 
-const ENTRADAS_MOSTRADAS = [1, 2, 3, 4, 5, 6, 7];
+const ENTRADAS_DEFECTO = 7;
 
 // Columnas de bateo mostradas en el boxscore (no incluye AL/BA/IN calculados,
 // solo las columnas "crudas" que se ven en el reporte impreso)
@@ -15,7 +16,7 @@ const COLS_BATEO = [
 ];
 
 const COLS_PITCHEO = [
-  ['i', 'I'], ['r', 'R'], ['c', 'C'], ['g', 'G'], ['p', 'P'],
+  ['i', 'I'], ['r', 'R'], ['c', 'C'], ['b', 'B'], ['g', 'G'], ['p', 'P'],
   ['vb', 'VBC'], ['hp', 'HP'], ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'],
   ['il', 'ILAN'], ['cp', 'CP'], ['cl', 'CL'], ['so', 'SO'], ['bb', 'BB'],
   ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'], ['wp', 'WP'], ['bk', 'BK'],
@@ -119,7 +120,7 @@ function TablaPitcheo({ filas, abrirJugador }) {
                     {f.nombres} {f.apellidos}
                   </button>
                 </td>
-                {COLS_PITCHEO.map(([k]) => <td key={k}>{f[k] ?? 0}</td>)}
+                {COLS_PITCHEO.map(([k]) => <td key={k}>{k === 'il' ? formatInnings(f[k], '0') : (f[k] ?? 0)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -172,6 +173,9 @@ export default function BoxScorePage() {
     return fila ? fila.carreras : null;
   }
 
+  const numEntradas = Math.max(Number(juego?.num_innings) || ENTRADAS_DEFECTO, ...entradas.map((e) => e.numero_entrada), 0);
+  const ENTRADAS_MOSTRADAS = Array.from({ length: numEntradas }, (_, i) => i + 1);
+
   if (!juegoId) return <div className="vacio">Falta el id del juego.</div>;
   if (cargando) return <div className="vacio">Cargando…</div>;
   if (!juego) return <div className="vacio">Juego no encontrado.</div>;
@@ -204,18 +208,20 @@ export default function BoxScorePage() {
       </div>
 
       {/* ── Línea de anotación (linescore) ── */}
-      <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-4)', overflowX: 'auto' }}>
-        <table className="tabla">
+      <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-4)', overflowX: 'auto', padding: 'var(--space-3)' }}>
+        <table className="tabla linea-anotacion">
           <thead>
             <tr>
-              <th style={{ textAlign: 'left' }}>Equipos</th>
+              <th className="linea-anotacion__equipo">Equipos</th>
               {ENTRADAS_MOSTRADAS.map((n) => <th key={n}>{n}</th>)}
-              <th>C</th>
+              <th className="linea-anotacion__total">C</th>
+              <th className="linea-anotacion__total">H</th>
+              <th className="linea-anotacion__total">E</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+              <td className="linea-anotacion__equipo">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <TeamBadge nombre={juego.equipo_visitante} logoUrl={juego.logo_visitante} tamano={22} />
                   {juego.equipo_visitante}
@@ -224,10 +230,12 @@ export default function BoxScorePage() {
               {ENTRADAS_MOSTRADAS.map((n) => (
                 <td key={n}>{carrerasEntrada(juego.visitante_equipo_inscrito_id, n) ?? ''}</td>
               ))}
-              <td style={{ fontWeight: 700, background: 'var(--amber)' }}>{juego.carreras_visitante ?? 0}</td>
+              <td className="linea-anotacion__total">{juego.carreras_visitante ?? 0}</td>
+              <td className="linea-anotacion__total">{juego.hits_visitante ?? 0}</td>
+              <td className="linea-anotacion__total">{juego.errores_visitante ?? 0}</td>
             </tr>
             <tr>
-              <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+              <td className="linea-anotacion__equipo">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <TeamBadge nombre={juego.equipo_local} logoUrl={juego.logo_local} tamano={22} />
                   {juego.equipo_local}
@@ -236,7 +244,9 @@ export default function BoxScorePage() {
               {ENTRADAS_MOSTRADAS.map((n) => (
                 <td key={n}>{carrerasEntrada(juego.local_equipo_inscrito_id, n) ?? ''}</td>
               ))}
-              <td style={{ fontWeight: 700, background: 'var(--amber)' }}>{juego.carreras_local ?? 0}</td>
+              <td className="linea-anotacion__total">{juego.carreras_local ?? 0}</td>
+              <td className="linea-anotacion__total">{juego.hits_local ?? 0}</td>
+              <td className="linea-anotacion__total">{juego.errores_local ?? 0}</td>
             </tr>
           </tbody>
         </table>
