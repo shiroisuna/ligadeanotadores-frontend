@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../../api/client';
 import { useToast } from '../../../components/Toast';
 import { Modal } from '../../../components/Modal';
@@ -25,6 +25,9 @@ export default function JuegosAdminPage() {
   const [cargando, setCargando] = useState(false);
   const [modalNuevo, setModalNuevo] = useState(false);
   const [juegoEditar, setJuegoEditar] = useState(null);
+  const [juegoAsignar, setJuegoAsignar] = useState(null);
+  const [asignados, setAsignados] = useState([]); // ids de juegos asignados al anotador
+  const [params, setParams] = useSearchParams();
 
   function cargarJuegos() {
     if (!temporadaCategoriaId) return;
@@ -33,6 +36,18 @@ export default function JuegosAdminPage() {
       .then(setJuegos)
       .finally(() => setCargando(false));
   }
+
+  useEffect(() => {
+    if (esAnotador) api.getAuth('/juegos/mis-asignados').then(setAsignados).catch(() => setAsignados([]));
+  }, [esAnotador]);
+
+  // Enlace desde Aprobaciones: /admin/juegos?editar=ID abre el modal de resultado
+  useEffect(() => {
+    const id = params.get('editar');
+    if (!id || juegos.length === 0) return;
+    const j = juegos.find((x) => String(x.id) === id);
+    if (j) { setJuegoEditar(j); params.delete('editar'); setParams(params, { replace: true }); }
+  }, [juegos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(cargarJuegos, [temporadaCategoriaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -86,7 +101,7 @@ export default function JuegosAdminPage() {
           </thead>
           <tbody>
             {juegos.map((j) => {
-              const perteneceAlAnotador = !esAnotador || [j.local_equipo_inscrito_id, j.visitante_equipo_inscrito_id]
+              const perteneceAlAnotador = !esAnotador || asignados.includes(j.id) || [j.local_equipo_inscrito_id, j.visitante_equipo_inscrito_id]
                 .map(Number).includes(Number(usuario?.equipo_inscrito_id));
               return (
                 <tr key={j.id}>
@@ -101,8 +116,11 @@ export default function JuegosAdminPage() {
                     {perteneceAlAnotador ? (
                       <>
                         <button className="boton boton--fantasma boton--chico" onClick={() => setJuegoEditar(j)}>Resultado</button>
+                        <Link className="boton boton--primario boton--chico" to={`/admin/estadisticas/${j.id}`}>Estadísticas</Link>
                         <Link className="boton boton--primario boton--chico" to={`/admin/boxscore/${j.id}`}>Box score</Link>
-                        <Link className="boton boton--fantasma boton--chico" to={`/admin/estadisticas/${j.id}`}>Revisar</Link>
+                        {!esAnotador && (
+                          <button className="boton boton--fantasma boton--chico" onClick={() => setJuegoAsignar(j)}>Anotadores</button>
+                        )}
                       </>
                     ) : (
                       <span style={{ fontSize: 12, color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)' }}>—</span>
@@ -123,6 +141,10 @@ export default function JuegosAdminPage() {
         onCreado={() => { setModalNuevo(false); cargarJuegos(); notificar('Juego programado', 'exito'); }}
       />
 
+      {juegoAsignar && (
+        <ModalAnotadores juego={juegoAsignar} onCerrar={() => setJuegoAsignar(null)} />
+      )}
+
       {juegoEditar && (
         <ModalResultado
           juego={juegoEditar}
@@ -131,6 +153,50 @@ export default function JuegosAdminPage() {
         />
       )}
     </div>
+  );
+}
+
+function ModalAnotadores({ juego, onCerrar }) {
+  const { notificar } = useToast();
+  const [disponibles, setDisponibles] = useState([]);
+  const [sel, setSel] = useState([]);
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => {
+    api.getAuth(`/juegos/${juego.id}/anotadores`).then(({ asignados, disponibles: d }) => {
+      setDisponibles(d); setSel(asignados.map((a) => a.id));
+    });
+  }, [juego.id]);
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      await api.put(`/juegos/${juego.id}/anotadores`, { usuario_ids: sel });
+      notificar('Anotadores asignados', 'exito');
+      onCerrar();
+    } catch (err) { notificar(err.message, 'error'); } finally { setGuardando(false); }
+  }
+
+  return (
+    <Modal titulo={`Anotadores — ${juego.equipo_visitante} (V) vs ${juego.equipo_local} (HC)`} abierto onCerrar={onCerrar}>
+      <p style={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--color-ink-soft)' }}>
+        Los anotadores marcados podrán cargar resultado, estadísticas y box score de este juego.
+      </p>
+      {disponibles.length === 0 && <p>No hay usuarios con rol anotador. Créalos en "Usuarios y accesos".</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '8px 0' }}>
+        {disponibles.map((u) => (
+          <label key={u.id} style={{ display: 'flex', gap: 8, fontFamily: 'var(--font-body)', fontSize: 14 }}>
+            <input type="checkbox" checked={sel.includes(u.id)}
+              onChange={() => setSel((p) => p.includes(u.id) ? p.filter((x) => x !== u.id) : [...p, u.id])} />
+            {u.email}
+          </label>
+        ))}
+      </div>
+      <div className="formulario__acciones">
+        <button className="boton boton--fantasma" onClick={onCerrar}>Cancelar</button>
+        <button className="boton boton--primario" onClick={guardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</button>
+      </div>
+    </Modal>
   );
 }
 

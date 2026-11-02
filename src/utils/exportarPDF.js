@@ -1,9 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatInnings } from './innings';
 
 const TITULO   = 'LIGA DE ANOTADORES DE BÉISBOL Y SOFTBOL';
 const SUBTITULO = 'Municipio Independencia — Santa Teresa del Tuy';
+const FUNDADA   = 'Liga de Anotadores — Fundada: 18/01/1983';
 
 // Carga el logo como base64 para que jsPDF pueda usarlo
 function cargarImagenBase64(url) {
@@ -43,11 +43,14 @@ async function membrete(doc) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(200, 210, 230);
-  doc.text(SUBTITULO, ancho / 2, 19, { align: 'center' });
+  doc.text(SUBTITULO, ancho / 2, 18, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(FUNDADA, ancho / 2, 23, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
 
   const hoy = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
   doc.setFontSize(7);
-  doc.text('Generado: ' + hoy, ancho - 8, 25, { align: 'right' });
+  doc.text('Generado: ' + hoy, ancho - 8, 26, { align: 'right' });
 
   doc.setTextColor(0, 0, 0);
   return 33; // Y de inicio del contenido
@@ -216,7 +219,7 @@ export async function exportarResultadoPDF({ juego, estadisticas }) {
         p.numero_camiseta ?? '—',
         (p.nombres || '') + ' ' + (p.apellidos || ''),
         p.equipo || '—',
-        p.g, p.p, p.s, formatInnings(p.il, '0'), p.vb, p.hp, p.so, p.bb, p.cl,
+        p.g, p.p, p.s, p.il, p.vb, p.hp, p.so, p.bb, p.cl,
         p.il > 0 ? (p.cl * 7 / p.il).toFixed(2) : '0.00',
       ]),
       startY: y,
@@ -354,8 +357,8 @@ export async function exportarReporteEquipoPDF({
   let yTabla = tituloReporte('1', 'TABLA DE POSICIONES');
   autoTable(doc, {
     startY: yTabla,
-    head: [['Pos', 'Equipo', 'JJ', 'JG', 'JP', 'JE', 'PTS', 'AVE']],
-    body: posiciones.map((p, i) => [i + 1, p.equipo, p.jj, p.jg, p.jp, p.je, p.ptos, p.ave ?? '']),
+    head: [['Pos', 'Equipo', 'JJ', 'JG', 'JP', 'JE', 'PTS']],
+    body: posiciones.map((p, i) => [i + 1, p.equipo, p.jj, p.jg, p.jp, p.je, p.ptos]),
     margin: { left: 15, right: 15 },
     styles: { fontSize: 9, cellPadding: 2 },
     headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
@@ -397,7 +400,7 @@ export async function exportarReporteEquipoPDF({
     startY: yTabla,
     head: [['#', 'Jugador', 'I.J', 'Outs', 'Asist', 'Error', 'Total', 'AVED']],
     body: fildeoOrdenado.map((f, i) => [
-      i + 1, `${f.nombres} ${f.apellidos}`, formatInnings(f.ij, '0'), f.outs, f.asistencias, f.errores, f.total, fmt3(f.aved),
+      i + 1, `${f.nombres} ${f.apellidos}`, f.ij, f.outs, f.asistencias, f.errores, f.total, fmt3(f.aved),
     ]),
     margin: { left: 15, right: 15 },
     styles: { fontSize: 8, cellPadding: 1.8 },
@@ -416,7 +419,7 @@ export async function exportarReporteEquipoPDF({
       startY: yTabla,
       head: [['#', 'Lanzador', 'IL', 'JG', 'JP', 'SO', 'BB', 'CL', 'ERA']],
       body: pitcheoOrdenado.map((f, i) => [
-        i + 1, `${f.nombres} ${f.apellidos}`, formatInnings(f.innings_lanzados, '0'), f.ganados, f.perdidos,
+        i + 1, `${f.nombres} ${f.apellidos}`, f.innings_lanzados, f.ganados, f.perdidos,
         f.ponches, f.bases_por_bolas, f.carreras_limpias, fmt2(f.efectividad),
       ]),
       margin: { left: 15, right: 15 },
@@ -577,4 +580,246 @@ export async function exportarFichasEquipoPDF({ equipo, categoria, temporadaNomb
   });
 
   doc.save(`Ficha_Equipo_${(equipo || 'equipo').replace(/\s+/g, '_')}.pdf`);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// BOX SCORE completo + INCIDENCIAS del juego, en un solo PDF
+// (formato del box score impreso de la liga)
+// ─────────────────────────────────────────────────────────────────────
+const AZUL  = [30, 58, 138];
+const ROJO  = [200, 30, 30];
+
+function fechaLarga(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  if (!y) return String(iso);
+  return new Date(y, m - 1, d).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function hhmm(h) { return h ? String(h).slice(0, 5) : '—'; }
+
+function ilFraccion(valor) {
+  const n = Number(valor);
+  if (Number.isNaN(n)) return '0';
+  const ent = Math.floor(n);
+  const frac = n - ent;
+  const F = [{ v: 0, t: '' }, { v: 1 / 3, t: '1/3' }, { v: 1 / 2, t: '1/2' }, { v: 2 / 3, t: '2/3' }];
+  let mejor = F[0], dif = frac;
+  for (const f of F) { const d = Math.abs(frac - f.v); if (d < dif) { mejor = f; dif = d; } }
+  if (!mejor.t) return String(ent);
+  return ent > 0 ? `${ent} ${mejor.t}` : mejor.t;
+}
+
+const N = (v) => Number(v) || 0;
+
+const COLS_BS_BATEO = [
+  ['vb', 'VB'], ['ca', 'CA'], ['hc', 'HC'], ['bb', 'BB'], ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'],
+  ['in_', 'IN'], ['al', 'AL'], ['h2', 'H2'], ['h3', 'H3'], ['hr', 'HR'], ['ba', 'BA'], ['ci', 'CI'],
+  ['br', 'BR'], ['or_', 'OR'], ['so', 'SO'], ['ij', 'IJ'], ['o', 'O'], ['a', 'A'], ['e', 'E'],
+  ['tl', 'TL'], ['dp', 'DP'], ['di', 'DI'],
+];
+
+const COLS_BS_PITCHEO = [
+  ['i', 'I'], ['r', 'R'], ['c', 'C'], ['g', 'G'], ['p', 'P'], ['s', 'S'], ['e', 'E'], ['tl', 'T.L'],
+  ['vb_enfrentados', 'VB'], ['hp', 'HP'], ['h2', 'H2'], ['h3', 'H3'], ['hr', 'HR'], ['il', 'IL'],
+  ['cp', 'CP'], ['cl', 'CL'], ['so', 'SO'], ['bb', 'BB'], ['bi', 'BI'], ['sf', 'SF'], ['gp', 'GP'],
+  ['wp', 'WP'], ['bk', 'BK'],
+];
+
+function tablaBateoPDF(doc, y, titulo, filas) {
+  const totales = {};
+  COLS_BS_BATEO.forEach(([k]) => {
+    totales[k] = k === 'tl'
+      ? filas.reduce((a, f) => a + N(f.o) + N(f.a) + N(f.e), 0)
+      : filas.reduce((a, f) => a + N(f[k]), 0);
+  });
+  autoTable(doc, {
+    startY: y,
+    head: [['Nº', titulo, 'POS', ...COLS_BS_BATEO.map(([, l]) => l)]],
+    body: filas.map((f) => [
+      f.numero_camiseta ?? '',
+      `${f.nombres || ''} ${f.apellidos || ''}`.trim(),
+      f.posicion || '',
+      ...COLS_BS_BATEO.map(([k]) => (k === 'tl' ? N(f.o) + N(f.a) + N(f.e) : N(f[k]))),
+    ]),
+    foot: [['', 'TOTALES', '', ...COLS_BS_BATEO.map(([k]) => totales[k])]],
+    margin: { left: 6, right: 6 },
+    styles: { fontSize: 6, cellPadding: 0.7, halign: 'center', lineWidth: 0 },
+    headStyles: { fillColor: [235, 238, 245], textColor: AZUL, fontStyle: 'bold', lineWidth: 0.1, lineColor: [120, 120, 120] },
+    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 6 }, 1: { halign: 'left', cellWidth: 30 }, 2: { cellWidth: 9 } },
+    showFoot: 'lastPage',
+  });
+  return doc.lastAutoTable.finalY + 3;
+}
+
+function tablaPitcheoPDF(doc, y, nombreEquipo, filas) {
+  if (!filas.length) return y;
+  autoTable(doc, {
+    startY: y,
+    head: [['Nº', `Labor lanzadores — ${nombreEquipo}`, ...COLS_BS_PITCHEO.map(([, l]) => l)]],
+    body: filas.map((f) => [
+      f.numero_camiseta ?? '',
+      `${f.nombres || ''} ${f.apellidos || ''}`.trim(),
+      ...COLS_BS_PITCHEO.map(([k]) => (k === 'il' ? ilFraccion(f.il) : N(f[k]))),
+    ]),
+    margin: { left: 6, right: 6 },
+    styles: { fontSize: 6, cellPadding: 0.7, halign: 'center' },
+    headStyles: { fillColor: [235, 238, 245], textColor: AZUL, fontStyle: 'bold', lineWidth: 0.1, lineColor: [120, 120, 120] },
+    columnStyles: { 0: { cellWidth: 6 }, 1: { halign: 'left', cellWidth: 44 } },
+  });
+  return doc.lastAutoTable.finalY + 3;
+}
+
+export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pitcheo = [], arbitros = [], incidencias = [] }) {
+  const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+  const ancho = doc.internal.pageSize.getWidth();
+
+  const idLocal = Number(juego.local_equipo_inscrito_id ?? juego.equipo_local_id);
+  const idVisit = Number(juego.visitante_equipo_inscrito_id ?? juego.equipo_visitante_id);
+  const delEquipo = (arr, id) => arr.filter((f) => Number(f.equipo_inscrito_id) === id);
+  const bateoV = delEquipo(bateo, idVisit), bateoL = delEquipo(bateo, idLocal);
+  const pitV = delEquipo(pitcheo, idVisit), pitL = delEquipo(pitcheo, idLocal);
+
+  // ── Cabecera (logo + datos de la liga) ──
+  const logoB64 = await cargarImagenBase64('/logo-labsmi.jpg');
+  if (logoB64) { try { doc.addImage(logoB64, 'JPEG', 7, 6, 24, 24); } catch (_) {} }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(0, 0, 0);
+  const cx = 52;
+  doc.text('LIGA ANOTADORES DE BEISBOL Y SOFTBOL', cx, 8, { align: 'center' });
+  doc.text('MUNICIPIO INDEPENDENCIA', cx, 12, { align: 'center' });
+  doc.text('ESTADO BOLIVARIANO DE MIRANDA', cx, 16, { align: 'center' });
+  doc.text('SANTA TERESA DEL TUY', cx, 20, { align: 'center' });
+  doc.text('FUNDADA: 18/01/1983', cx, 24, { align: 'center' });
+  doc.setTextColor(...ROJO);
+  doc.text((juego.categoria_nombre || '').toUpperCase(), cx, 28, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  doc.setFontSize(10);
+  doc.text('BOX SCORE', 150, 8, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setTextColor(...ROJO);
+  const fechaTxt = `SANTA TERESA DEL TUY, ${fechaLarga(juego.fecha)}${juego.fecha_fin && String(juego.fecha_fin).slice(0, 10) !== String(juego.fecha).slice(0, 10) ? ` a ${fechaLarga(juego.fecha_fin)}` : ''}.`;
+  doc.text(fechaTxt, 150, 12, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // ── Línea de anotación ──
+  const nEnt = Math.max(7, ...entradas.map((e) => N(e.numero_entrada)));
+  const porEntrada = (idEq, n) => {
+    const f = entradas.find((e) => Number(e.equipo_inscrito_id) === idEq && Number(e.numero_entrada) === n);
+    return f ? N(f.carreras) : '';
+  };
+  const sumHits = (arr) => arr.reduce((a, f) => a + N(f.hc), 0);
+  const hV = juego.hits_visitante ?? sumHits(bateoV);
+  const hL = juego.hits_local ?? sumHits(bateoL);
+  autoTable(doc, {
+    startY: 14,
+    margin: { left: 78, right: 6 },
+    head: [['', 'ENTRADAS', ...Array.from({ length: nEnt }, (_, i) => String(i + 1)), 'C', 'H', 'E']],
+    body: [
+      ['VS', juego.equipo_visitante, ...Array.from({ length: nEnt }, (_, i) => porEntrada(idVisit, i + 1)), N(juego.carreras_visitante), hV, N(juego.errores_visitante)],
+      ['HC', juego.equipo_local,     ...Array.from({ length: nEnt }, (_, i) => porEntrada(idLocal, i + 1)), N(juego.carreras_local),     hL, N(juego.errores_local)],
+    ],
+    styles: { fontSize: 7, cellPadding: 0.9, halign: 'center', fontStyle: 'bold' },
+    headStyles: { fillColor: [255, 255, 255], textColor: ROJO, lineWidth: 0 },
+    columnStyles: { 0: { cellWidth: 7, halign: 'left' }, 1: { cellWidth: 24, halign: 'left' } },
+    theme: 'plain',
+  });
+  let y = Math.max(doc.lastAutoTable.finalY + 2, 33);
+
+  // Ganador
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('COPA :', 8, y + 2);
+  let lineaGanador = '';
+  const cl = N(juego.carreras_local), cv = N(juego.carreras_visitante);
+  if (juego.equipo_ganador_id || (juego.estado === 'jugado' && cl !== cv)) {
+    const gana = juego.equipo_ganador_id
+      ? (Number(juego.equipo_ganador_id) === idLocal ? juego.equipo_local : juego.equipo_visitante)
+      : (cl > cv ? juego.equipo_local : juego.equipo_visitante);
+    lineaGanador = `EL JUEGO LO GANÓ   ${String(gana).toUpperCase()}   ${Math.max(cl, cv)} a ${Math.min(cl, cv)}`;
+  }
+  doc.text(lineaGanador, 110, y + 2, { align: 'center' });
+  y += 5;
+
+  // ── Tablas: visitante primero, luego local ──
+  y = tablaBateoPDF(doc, y, `${juego.equipo_visitante} (V)`, bateoV);
+  y = tablaBateoPDF(doc, y, `${juego.equipo_local} (HC)`, bateoL);
+  y = tablaPitcheoPDF(doc, y, juego.equipo_visitante, pitV);
+  y = tablaPitcheoPDF(doc, y, juego.equipo_local, pitL);
+
+  // ── Datos técnicos ──
+  if (y > 225) { doc.addPage(); y = 12; }
+  const nombresArb = arbitros.map((a) => `${a.nombres} ${a.apellidos}`).join(' - ');
+  const filasTec = [
+    ['TIEMPO DE JUEGO', `(INICIO: ${hhmm(juego.hora_inicio || juego.hora)}) (TÉRMINO: ${hhmm(juego.hora_final)})${juego.duracion_minutos ? `  ${Math.floor(juego.duracion_minutos / 60)} HORA(S) Y ${juego.duracion_minutos % 60} MINUTOS` : ''}`],
+    ['ÁRBITROS', `${nombresArb || '—'}${juego.entidad_arbitros ? `     ENTIDAD= ${juego.entidad_arbitros}` : ''}`],
+    ['ANOTADOR', `${juego.anotador_oficial || '—'}${juego.entidad_anotador ? `     ENTIDAD= ${juego.entidad_anotador}` : ''}`],
+    ['FECHA', fechaTxt.toUpperCase()],
+    ['ESTADIO', `${juego.estadio || '—'}${juego.estadio_direccion ? `. ${juego.estadio_direccion}` : ''}`.toUpperCase()],
+  ];
+  if (juego.ronda) filasTec.push(['RONDA', String(juego.ronda).toUpperCase()]);
+  autoTable(doc, {
+    startY: y,
+    head: [[{ content: 'DATOS TÉCNICOS', colSpan: 2, styles: { halign: 'left' } }]],
+    body: filasTec,
+    margin: { left: 6, right: 6 },
+    styles: { fontSize: 7, cellPadding: 1 },
+    headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: 'bold' },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34 } },
+    theme: 'plain',
+  });
+  y = doc.lastAutoTable.finalY + 4;
+
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setFontSize(8);
+  doc.setTextColor(...ROJO);
+  const mvpEq = juego.mvp_equipo_inscrito_id
+    ? (Number(juego.mvp_equipo_inscrito_id) === idLocal ? juego.equipo_local : juego.equipo_visitante) : '';
+  doc.text('Jugador más valioso del juego:', 36, y);
+  doc.text(juego.mvp_nombre ? `${juego.mvp_nombre}   ( ${mvpEq} )` : '—', 120, y);
+  doc.setTextColor(0, 0, 0);
+
+  // ── INCIDENCIAS en página aparte (mismo PDF) ──
+  doc.addPage();
+  let yi = await membrete(doc);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...AZUL);
+  doc.text('REPORTE DE INCIDENCIAS', ancho / 2, yi + 4, { align: 'center' });
+  doc.setTextColor(80, 80, 80);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${juego.equipo_visitante || '—'} (V) vs ${juego.equipo_local || '—'} (HC)  |  Fecha: ${String(juego.fecha || '—').slice(0, 10)}`, ancho / 2, yi + 11, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  yi += 18;
+  if (!incidencias.length) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.text('No hay incidencias registradas para este juego.', 15, yi);
+  } else {
+    autoTable(doc, {
+      startY: yi,
+      head: [['Tipo', 'Jugador', 'Equipo', 'Descripción', 'Fecha/Hora']],
+      body: incidencias.map((i) => [
+        TIPO_LABEL[i.tipo] || i.tipo,
+        i.roster_id ? `${i.nombres || ''} ${i.apellidos || ''}`.trim() : '—',
+        i.roster_id ? (i.equipo || '—') : '—',
+        i.descripcion,
+        i.creado_en ? new Date(i.creado_en).toLocaleString('es-VE') : '—',
+      ]),
+      margin: { left: 15, right: 15 },
+      styles: { fontSize: 8.5, cellPadding: 2.5, valign: 'top' },
+      headStyles: { fillColor: AZUL, textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: { 3: { cellWidth: 70 } },
+    });
+  }
+
+  const nombre = `BoxScore_${juego.equipo_visitante}_vs_${juego.equipo_local}_${String(juego.fecha || '').slice(0, 10)}`.replace(/\s+/g, '_');
+  doc.save(nombre + '.pdf');
 }

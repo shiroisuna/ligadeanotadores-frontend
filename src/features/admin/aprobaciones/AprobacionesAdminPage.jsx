@@ -64,7 +64,7 @@ export default function AprobacionesAdminPage() {
       <div className="admin__cabecera">
         <div>
           <h1>Aprobaciones pendientes</h1>
-          <p>Todo sale del box score: revísalo, corrige lo que haga falta y aprueba para publicarlo.</p>
+          <p>Revisa los resultados y estadísticas cargados por los anotadores antes de publicarlos.</p>
         </div>
         {juegos.length > 0 && (
           <span style={{
@@ -115,8 +115,9 @@ export default function AprobacionesAdminPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Link className="boton boton--fantasma" to={`/admin/boxscore/${j.id}`}>Ver box score</Link>
-              <Link className="boton boton--fantasma" to={`/admin/estadisticas/${j.id}`}>Revisar / corregir</Link>
+              <Link className="boton boton--fantasma" to={`/admin/boxscore/${j.id}`}>Revisar / editar box score</Link>
+              <Link className="boton boton--fantasma" to={`/admin/estadisticas/${j.id}`}>Revisar / editar estadísticas</Link>
+              <Link className="boton boton--fantasma" to={`/admin/juegos?editar=${j.id}`}>Editar resultado</Link>
               <button
                 className="boton boton--primario"
                 onClick={() => aprobar(j.id)}

@@ -1,57 +1,74 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { usePlayerModal } from '../../../components/PlayerModalProvider';
 import { api } from '../../../api/client';
-import { exportarIncidenciasPDF } from '../../../utils/exportarPDF';
-import { formatInnings } from '../../../utils/innings';
+import { exportarBoxScorePDF } from '../../../utils/exportarPDF';
 
-const ENTRADAS_DEFECTO = 7;
+const N = (v) => Number(v) || 0;
 
-// Columnas de bateo mostradas en el boxscore (no incluye AL/BA/IN calculados,
-// solo las columnas "crudas" que se ven en el reporte impreso)
 const COLS_BATEO = [
   ['vb', 'VB'], ['ca', 'CA'], ['hc', 'HC'], ['bb', 'BB'], ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'],
-  ['h2', '2H'], ['h3', '3H'], ['hr', 'HR'], ['ci', 'CI'], ['br', 'BR'], ['or_', 'OR'], ['so', 'SO'],
+  ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'], ['ci', 'CI'], ['br', 'BR'], ['or_', 'OR'], ['so', 'SO'],
+  ['ij', 'IJ'], ['o', 'O'], ['a', 'A'], ['e', 'E'],
 ];
 
 const COLS_PITCHEO = [
-  ['i', 'I'], ['r', 'R'], ['c', 'C'], ['b', 'B'], ['g', 'G'], ['p', 'P'],
-  ['vb', 'VBC'], ['hp', 'HP'], ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'],
-  ['il', 'ILAN'], ['cp', 'CP'], ['cl', 'CL'], ['so', 'SO'], ['bb', 'BB'],
-  ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'], ['wp', 'WP'], ['bk', 'BK'],
+  ['i', 'I'], ['r', 'R'], ['c', 'C'], ['g', 'G'], ['p', 'P'], ['s', 'S'], ['e', 'E'], ['tl', 'T.L'],
+  ['vb_enfrentados', 'VB'], ['hp', 'HP'], ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'], ['il', 'IL'],
+  ['cp', 'CP'], ['cl', 'CL'], ['so', 'SO'], ['bb', 'BB'], ['bi', 'BI'], ['sf', 'SF'], ['gp', 'GP'],
+  ['wp', 'WP'], ['bk', 'BK'],
 ];
 
-function sumar(filas, campo) {
-  return filas.reduce((acc, f) => acc + (Number(f[campo]) || 0), 0);
+function ilFraccion(valor) {
+  const n = Number(valor);
+  if (Number.isNaN(n)) return '0';
+  const ent = Math.floor(n);
+  const frac = n - ent;
+  const F = [{ v: 0, t: '' }, { v: 1 / 3, t: '1/3' }, { v: 1 / 2, t: '1/2' }, { v: 2 / 3, t: '2/3' }];
+  let mejor = F[0], dif = frac;
+  for (const f of F) { const d = Math.abs(frac - f.v); if (d < dif) { mejor = f; dif = d; } }
+  if (!mejor.t) return String(ent);
+  return ent > 0 ? `${ent} ${mejor.t}` : mejor.t;
 }
 
-// Combina el fildeo (posiciones + O/A/E) de un jugador dentro del mismo
-// juego, ya que puede tener varias filas (una por posición jugada).
-function combinarFildeoPorJugador(fildeo) {
-  const porRoster = {};
-  for (const f of fildeo) {
-    if (!porRoster[f.roster_id]) {
-      porRoster[f.roster_id] = { posiciones: [], o: 0, a: 0, e: 0 };
-    }
-    porRoster[f.roster_id].posiciones.push(f.posicion);
-    porRoster[f.roster_id].o += Number(f.o) || 0;
-    porRoster[f.roster_id].a += Number(f.a) || 0;
-    porRoster[f.roster_id].e += Number(f.e) || 0;
-  }
-  return porRoster;
+// "Juan Pérez" -> "J. PÉREZ"
+function nombreCorto(f) {
+  if (!f) return '—';
+  const ini = (f.nombres || '').trim().charAt(0);
+  return `${ini ? ini + '. ' : ''}${(f.apellidos || '').trim()}`.toUpperCase();
 }
 
-function TablaBateo({ filas, fildeoPorRoster, abrirJugador }) {
-  const totales = { vb: 0, ca: 0, hc: 0, bb: 0, sh: 0, sf: 0, gp: 0, h2: 0, h3: 0, hr: 0, ci: 0, br: 0, or_: 0, so: 0, o: 0, a: 0, e: 0 };
-  for (const [campo] of COLS_BATEO) totales[campo] = sumar(filas, campo);
-  for (const roster_id of Object.keys(fildeoPorRoster)) {
-    if (!filas.find((f) => String(f.roster_id) === roster_id)) continue;
-    totales.o += fildeoPorRoster[roster_id].o;
-    totales.a += fildeoPorRoster[roster_id].a;
-    totales.e += fildeoPorRoster[roster_id].e;
-  }
+// Los 2 jugadores más destacados de un equipo (H, HR, CI)
+function destacados(filas) {
+  return filas
+    .filter((f) => N(f.vb) > 0 && N(f.hc) > 0)
+    .map((f) => ({ f, puntos: N(f.hc) + 2 * N(f.hr) + N(f.ci) }))
+    .sort((a, b) => b.puntos - a.puntos)
+    .slice(0, 2)
+    .map(({ f }) => ({
+      nombre: `${f.nombres} ${f.apellidos}`.toUpperCase(),
+      detalle: [`${N(f.hc)} DE ${N(f.vb)}`, N(f.hr) ? `${N(f.hr)} HR` : null, N(f.ci) ? `${N(f.ci)} CI` : null]
+        .filter(Boolean).join(' · '),
+    }));
+}
 
+const panel = {
+  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)',
+  borderRadius: 8, padding: '8px 12px', textAlign: 'center',
+};
+
+function CajaDecision({ titulo, valor }) {
+  return (
+    <div style={panel}>
+      <div style={{ fontSize: 10, letterSpacing: 1, opacity: 0.75 }}>{titulo}</div>
+      <div style={{ fontWeight: 800, fontSize: 15, marginTop: 2 }}>{valor}</div>
+    </div>
+  );
+}
+
+function TablaBateo({ filas, abrirJugador }) {
+  const tot = (k) => filas.reduce((a, f) => a + N(f[k]), 0);
   return (
     <div style={{ overflowX: 'auto' }}>
       <table className="tabla">
@@ -61,35 +78,35 @@ function TablaBateo({ filas, fildeoPorRoster, abrirJugador }) {
             <th style={{ textAlign: 'left' }}>Jugador</th>
             <th>POS</th>
             {COLS_BATEO.map(([k, l]) => <th key={k}>{l}</th>)}
-            <th>O</th><th>A</th><th>E</th>
+            <th>TL</th>
           </tr>
         </thead>
         <tbody>
-          {filas.map((f) => {
-            const fildeo = fildeoPorRoster[f.roster_id] || { posiciones: [], o: 0, a: 0, e: 0 };
-            return (
-              <tr key={f.roster_id}>
-                <td>{f.numero_camiseta ?? ''}</td>
-                <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                  <button
-                    onClick={() => abrirJugador(f.roster_id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--blue-txt)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
-                  >
-                    {f.nombres} {f.apellidos}
-                  </button>
-                </td>
-                <td>{fildeo.posiciones.join(', ')}</td>
-                {COLS_BATEO.map(([k]) => <td key={k}>{f[k] ?? 0}</td>)}
-                <td>{fildeo.o}</td><td>{fildeo.a}</td><td>{fildeo.e}</td>
-              </tr>
-            );
-          })}
-          <tr style={{ fontWeight: 700 }}>
-            <td colSpan={2}>TOTALES</td>
-            <td></td>
-            {COLS_BATEO.map(([k]) => <td key={k}>{totales[k]}</td>)}
-            <td>{totales.o}</td><td>{totales.a}</td><td>{totales.e}</td>
-          </tr>
+          {filas.map((f) => (
+            <tr key={f.id ?? f.roster_id}>
+              <td>{f.numero_camiseta ?? ''}</td>
+              <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                <button onClick={() => abrirJugador(f.roster_id)}
+                  style={{ background: 'none', border: 'none', color: 'var(--blue-txt)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+                  {f.nombres} {f.apellidos}
+                </button>
+              </td>
+              <td>{f.posicion || ''}</td>
+              {COLS_BATEO.map(([k]) => <td key={k}>{N(f[k])}</td>)}
+              <td>{N(f.o) + N(f.a) + N(f.e)}</td>
+            </tr>
+          ))}
+          {filas.length > 0 && (
+            <tr style={{ fontWeight: 700 }}>
+              <td colSpan={2}>TOTALES</td>
+              <td></td>
+              {COLS_BATEO.map(([k]) => <td key={k}>{tot(k)}</td>)}
+              <td>{tot('o') + tot('a') + tot('e')}</td>
+            </tr>
+          )}
+          {filas.length === 0 && (
+            <tr><td colSpan={COLS_BATEO.length + 4} style={{ textAlign: 'center', fontFamily: 'var(--font-body)' }}>Sin bateo cargado.</td></tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -100,7 +117,7 @@ function TablaPitcheo({ filas, abrirJugador }) {
   if (!filas.length) return null;
   return (
     <>
-      <h4 style={{ margin: 'var(--space-4) 0 var(--space-2)' }}>Pitcheo</h4>
+      <h4 style={{ margin: 'var(--space-4) 0 var(--space-2)' }}>Labor de lanzadores</h4>
       <div style={{ overflowX: 'auto' }}>
         <table className="tabla">
           <thead>
@@ -111,16 +128,14 @@ function TablaPitcheo({ filas, abrirJugador }) {
           </thead>
           <tbody>
             {filas.map((f) => (
-              <tr key={f.roster_id}>
+              <tr key={f.id ?? f.roster_id}>
                 <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                  <button
-                    onClick={() => abrirJugador(f.roster_id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--blue-txt)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
-                  >
+                  <button onClick={() => abrirJugador(f.roster_id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--blue-txt)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
                     {f.nombres} {f.apellidos}
                   </button>
                 </td>
-                {COLS_PITCHEO.map(([k]) => <td key={k}>{k === 'il' ? formatInnings(f[k], '0') : (f[k] ?? 0)}</td>)}
+                {COLS_PITCHEO.map(([k]) => <td key={k}>{k === 'il' ? ilFraccion(f.il) : N(f[k])}</td>)}
               </tr>
             ))}
           </tbody>
@@ -137,8 +152,10 @@ export default function BoxScorePage() {
 
   const [juego, setJuego] = useState(null);
   const [entradas, setEntradas] = useState([]);
-  const [stats, setStats] = useState({ bateo: [], pitcheo: [], fildeo: [] });
+  const [stats, setStats] = useState({ bateo: [], pitcheo: [] });
+  const [arbitros, setArbitros] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [descargando, setDescargando] = useState(false);
 
   useEffect(() => {
     if (!juegoId) return;
@@ -146,113 +163,154 @@ export default function BoxScorePage() {
     Promise.all([
       api.get(`/juegos/${juegoId}`),
       api.get(`/juegos/${juegoId}/entradas`),
-      api.get(`/estadisticas/${juegoId}`),
-    ]).then(([j, e, s]) => {
-      setJuego(j);
-      setEntradas(e);
-      setStats(s);
+      api.get(`/boxscore/${juegoId}`),
+      api.get(`/arbitros/juego/${juegoId}`).catch(() => []),
+    ]).then(([j, e, s, a]) => {
+      setJuego(j); setEntradas(e); setStats(s); setArbitros(a);
     }).finally(() => setCargando(false));
   }, [juegoId]);
 
-  const fildeoPorRoster = useMemo(() => combinarFildeoPorJugador(stats.fildeo), [stats.fildeo]);
+  const idLocal = Number(juego?.local_equipo_inscrito_id ?? juego?.equipo_local_id);
+  const idVisit = Number(juego?.visitante_equipo_inscrito_id ?? juego?.equipo_visitante_id);
 
-  const bateoLocal = stats.bateo.filter((f) => f.equipo === juego?.equipo_local);
-  const bateoVisitante = stats.bateo.filter((f) => f.equipo === juego?.equipo_visitante);
-  const pitcheoLocal = stats.pitcheo.filter((f) => f.equipo === juego?.equipo_local);
-  const pitcheoVisitante = stats.pitcheo.filter((f) => f.equipo === juego?.equipo_visitante);
+  const { bateoV, bateoL, pitV, pitL } = useMemo(() => ({
+    bateoV: stats.bateo.filter((f) => Number(f.equipo_inscrito_id) === idVisit),
+    bateoL: stats.bateo.filter((f) => Number(f.equipo_inscrito_id) === idLocal),
+    pitV: stats.pitcheo.filter((f) => Number(f.equipo_inscrito_id) === idVisit),
+    pitL: stats.pitcheo.filter((f) => Number(f.equipo_inscrito_id) === idLocal),
+  }), [stats, idLocal, idVisit]);
 
-  const [arbitroP, arbitroA] = (juego?.arbitros || '').split('/').map((s) => s.trim());
-
-  async function descargarIncidencias() {
-    const incidencias = await api.get(`/incidencias/${juegoId}`);
-    exportarIncidenciasPDF({ juego, incidencias });
+  async function descargarPDF() {
+    setDescargando(true);
+    try {
+      const incidencias = await api.get(`/incidencias/${juegoId}`).catch(() => []);
+      await exportarBoxScorePDF({
+        juego, entradas, bateo: stats.bateo, pitcheo: stats.pitcheo, arbitros, incidencias,
+      });
+    } finally {
+      setDescargando(false);
+    }
   }
-
-  function carrerasEntrada(equipo_inscrito_id, numero) {
-    const fila = entradas.find((e) => e.equipo_inscrito_id === equipo_inscrito_id && e.numero_entrada === numero);
-    return fila ? fila.carreras : null;
-  }
-
-  const numEntradas = Math.max(Number(juego?.num_innings) || ENTRADAS_DEFECTO, ...entradas.map((e) => e.numero_entrada), 0);
-  const ENTRADAS_MOSTRADAS = Array.from({ length: numEntradas }, (_, i) => i + 1);
 
   if (!juegoId) return <div className="vacio">Falta el id del juego.</div>;
   if (cargando) return <div className="vacio">Cargando…</div>;
   if (!juego) return <div className="vacio">Juego no encontrado.</div>;
+  if (stats.pendiente) {
+    return (
+      <main className="contenedor" style={{ paddingTop: 'var(--space-5)' }}>
+        <div className="vacio" style={{ fontSize: 16 }}>
+          ⏳ El box score de {juego.equipo_visitante} vs {juego.equipo_local} está pendiente de aprobación
+          y se publicará cuando el administrador lo revise.
+        </div>
+      </main>
+    );
+  }
+
+  const nEnt = Math.max(7, ...entradas.map((e) => N(e.numero_entrada)));
+  const porEntrada = (idEq, n) => {
+    const f = entradas.find((e) => Number(e.equipo_inscrito_id) === idEq && Number(e.numero_entrada) === n);
+    return f ? N(f.carreras) : '';
+  };
+  const hits = (arr, campo) => (juego[campo] != null ? juego[campo] : arr.reduce((a, f) => a + N(f.hc), 0));
+
+  const todosPitcheo = stats.pitcheo;
+  const ganador = todosPitcheo.find((f) => N(f.g) > 0);
+  const perdedor = todosPitcheo.find((f) => N(f.p) > 0);
+  const salvador = todosPitcheo.find((f) => N(f.s) > 0);
+
+  const lineas = [
+    { id: idVisit, nombre: juego.equipo_visitante, logo: juego.logo_visitante, etiqueta: 'V',
+      c: juego.carreras_visitante, h: hits(bateoV, 'hits_visitante'), e: juego.errores_visitante },
+    { id: idLocal, nombre: juego.equipo_local, logo: juego.logo_local, etiqueta: 'HC',
+      c: juego.carreras_local, h: hits(bateoL, 'hits_local'), e: juego.errores_local },
+  ];
+
+  const fecha = String(juego.fecha || '').slice(0, 10);
+  const titulo = `${juego.equipo_visitante} ${N(juego.carreras_visitante)} - ${N(juego.carreras_local)} ${juego.equipo_local}`;
 
   return (
     <main className="contenedor" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)' }}>
-      {/* ── Cabecera del juego ── */}
-      <div style={{
-        background: 'var(--morado, #4a1e8f)', color: '#fff', borderRadius: 12,
-        padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)', flexWrap: 'wrap',
+      {/* ── Marcador estilo transmisión ── */}
+      <section style={{
+        background: 'linear-gradient(180deg, #0b3d91 0%, #082a66 100%)', color: '#fff',
+        borderRadius: 14, padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-4)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-          <TeamBadge nombre={juego.equipo_local} logoUrl={juego.logo_local} tamano={56} />
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.9 }}>
-            <div>Fecha: <b>{juego.fecha}</b> &nbsp;&nbsp; Árbitro P: <b>{arbitroP || '—'}</b> &nbsp;&nbsp; Árbitro A: <b>{arbitroA || '—'}</b></div>
-            <div>Hora: <b>{juego.hora ? juego.hora.slice(0, 8) : '—'}</b> &nbsp;&nbsp; Campo: <b>{juego.estadio || '—'}</b> &nbsp;&nbsp; Anotador: <b>{juego.anotador_oficial || '—'}</b></div>
+        <div style={{ textAlign: 'center', marginBottom: 'var(--space-3)' }}>
+          <div style={{ fontWeight: 800, fontSize: 20 }}>{titulo.toUpperCase()}</div>
+          <div style={{ fontSize: 11, letterSpacing: 1, opacity: 0.8, marginTop: 4 }}>
+            BOX SCORE · LABSMI · {fecha}{juego.estadio ? ` · ${juego.estadio.toUpperCase()}` : ''}
           </div>
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 18px', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, opacity: 0.8 }}>JUEGO ID</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>#{juego.id}</div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px', fontFamily: 'var(--font-body)' }}>
+            <thead>
+              <tr style={{ fontSize: 12, opacity: 0.85 }}>
+                <th style={{ textAlign: 'left', padding: '0 10px' }}>EQUIPO</th>
+                {Array.from({ length: nEnt }, (_, i) => <th key={i} style={{ width: 30 }}>{i + 1}</th>)}
+                <th style={{ width: 44 }}>C</th><th style={{ width: 44 }}>H</th><th style={{ width: 44 }}>E</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineas.map((l) => (
+                <tr key={l.etiqueta} style={{ background: 'rgba(0,0,0,0.28)' }}>
+                  <td style={{ padding: '8px 10px', borderRadius: '8px 0 0 8px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
+                      <TeamBadge nombre={l.nombre} logoUrl={l.logo} tamano={30} />
+                      {l.nombre.toUpperCase()}
+                      <small style={{ opacity: 0.6, fontWeight: 400 }}>({l.etiqueta})</small>
+                    </span>
+                  </td>
+                  {Array.from({ length: nEnt }, (_, i) => (
+                    <td key={i} style={{ textAlign: 'center', fontWeight: 700 }}>{porEntrada(l.id, i + 1)}</td>
+                  ))}
+                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 20, color: '#ffd23f' }}>{N(l.c)}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 18 }}>{l.h}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 18, borderRadius: '0 8px 8px 0' }}>{N(l.e)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+
+        {/* Ganó / Perdió / Salvó */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, margin: 'var(--space-3) 0' }}>
+          <CajaDecision titulo="GANÓ" valor={nombreCorto(ganador)} />
+          <CajaDecision titulo="PERDIÓ" valor={nombreCorto(perdedor)} />
+          <CajaDecision titulo="SALVÓ" valor={nombreCorto(salvador)} />
+        </div>
+
+        {/* Destacados de bateo: visitante a la izquierda, local a la derecha */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+          {[{ eq: juego.equipo_visitante, filas: bateoV }, { eq: juego.equipo_local, filas: bateoL }].map(({ eq, filas }) => {
+            const d = destacados(filas);
+            return (
+              <div key={eq} style={{ ...panel, minHeight: 64 }}>
+                <div style={{ fontSize: 10, letterSpacing: 1, opacity: 0.7, marginBottom: 4 }}>DESTACADOS · {eq.toUpperCase()}</div>
+                {d.length === 0 && <div style={{ opacity: 0.6, fontSize: 12 }}>—</div>}
+                {d.map((x) => (
+                  <div key={x.nombre} style={{ marginBottom: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13 }}>{x.nombre}</div>
+                    <div style={{ fontSize: 12 }}>{x.detalle}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 10, opacity: 0.7, textAlign: 'center', marginTop: 'var(--space-3)' }}>
+          C: CARRERAS · H: HITS · E: ERRORES · CI: IMPULSADAS · FUENTE: LABSMI
+        </div>
+      </section>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-4)' }}>
-        <button className="boton boton--fantasma boton--chico" onClick={descargarIncidencias}>
-          📄 Descargar Incidencias (PDF)
+        <button className="boton boton--dorado boton--chico" onClick={descargarPDF} disabled={descargando}>
+          {descargando ? 'Generando PDF…' : '📄 Descargar Box Score + Incidencias (PDF)'}
         </button>
       </div>
 
-      {/* ── Línea de anotación (linescore) ── */}
-      <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-4)', overflowX: 'auto', padding: 'var(--space-3)' }}>
-        <table className="tabla linea-anotacion">
-          <thead>
-            <tr>
-              <th className="linea-anotacion__equipo">Equipos</th>
-              {ENTRADAS_MOSTRADAS.map((n) => <th key={n}>{n}</th>)}
-              <th className="linea-anotacion__total">C</th>
-              <th className="linea-anotacion__total">H</th>
-              <th className="linea-anotacion__total">E</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="linea-anotacion__equipo">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <TeamBadge nombre={juego.equipo_visitante} logoUrl={juego.logo_visitante} tamano={22} />
-                  {juego.equipo_visitante}
-                </span>
-              </td>
-              {ENTRADAS_MOSTRADAS.map((n) => (
-                <td key={n}>{carrerasEntrada(juego.visitante_equipo_inscrito_id, n) ?? ''}</td>
-              ))}
-              <td className="linea-anotacion__total">{juego.carreras_visitante ?? 0}</td>
-              <td className="linea-anotacion__total">{juego.hits_visitante ?? 0}</td>
-              <td className="linea-anotacion__total">{juego.errores_visitante ?? 0}</td>
-            </tr>
-            <tr>
-              <td className="linea-anotacion__equipo">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <TeamBadge nombre={juego.equipo_local} logoUrl={juego.logo_local} tamano={22} />
-                  {juego.equipo_local}
-                </span>
-              </td>
-              {ENTRADAS_MOSTRADAS.map((n) => (
-                <td key={n}>{carrerasEntrada(juego.local_equipo_inscrito_id, n) ?? ''}</td>
-              ))}
-              <td className="linea-anotacion__total">{juego.carreras_local ?? 0}</td>
-              <td className="linea-anotacion__total">{juego.hits_local ?? 0}</td>
-              <td className="linea-anotacion__total">{juego.errores_local ?? 0}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Visitante ── */}
+      {/* ── Visitante primero ── */}
       <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-5)' }}>
         <div className="tarjeta-lista__cabecera">
           <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -261,21 +319,32 @@ export default function BoxScorePage() {
           </span>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 12 }}>Visitante</span>
         </div>
-        <TablaBateo filas={bateoVisitante} fildeoPorRoster={fildeoPorRoster} abrirJugador={abrirJugador} />
-        <TablaPitcheo filas={pitcheoVisitante} abrirJugador={abrirJugador} />
+        <TablaBateo filas={bateoV} abrirJugador={abrirJugador} />
+        <TablaPitcheo filas={pitV} abrirJugador={abrirJugador} />
       </div>
 
-      {/* ── Local ── */}
       <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-5)' }}>
         <div className="tarjeta-lista__cabecera">
           <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <TeamBadge nombre={juego.equipo_local} logoUrl={juego.logo_local} tamano={26} />
             <h3>{juego.equipo_local}</h3>
           </span>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12 }}>Local</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12 }}>Home club</span>
         </div>
-        <TablaBateo filas={bateoLocal} fildeoPorRoster={fildeoPorRoster} abrirJugador={abrirJugador} />
-        <TablaPitcheo filas={pitcheoLocal} abrirJugador={abrirJugador} />
+        <TablaBateo filas={bateoL} abrirJugador={abrirJugador} />
+        <TablaPitcheo filas={pitL} abrirJugador={abrirJugador} />
+      </div>
+
+      {/* ── Datos técnicos ── */}
+      <div className="tarjeta-lista">
+        <div className="tarjeta-lista__cabecera"><h3>Datos técnicos</h3></div>
+        <div style={{ padding: 'var(--space-4)', fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.9 }}>
+          <p><b>Tiempo de juego:</b> {juego.hora_inicio ? `Inicio ${String(juego.hora_inicio).slice(0, 5)}` : '—'}{juego.hora_final ? ` · Final ${String(juego.hora_final).slice(0, 5)}` : ''}{juego.duracion_minutos ? ` · ${juego.duracion_minutos} minutos` : ''}</p>
+          <p><b>Árbitros:</b> {arbitros.length ? arbitros.map((a) => `${a.nombres} ${a.apellidos}`).join(' - ') : '—'}{juego.entidad_arbitros ? ` — Entidad: ${juego.entidad_arbitros}` : ''}</p>
+          <p><b>Anotador:</b> {juego.anotador_oficial || '—'}{juego.entidad_anotador ? ` — Entidad: ${juego.entidad_anotador}` : ''}</p>
+          <p><b>Estadio:</b> {juego.estadio || '—'}{juego.estadio_direccion ? ` — ${juego.estadio_direccion}` : ''}</p>
+          <p><b>Jugador más valioso:</b> {juego.mvp_nombre || '—'}</p>
+        </div>
       </div>
     </main>
   );

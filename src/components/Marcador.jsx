@@ -16,16 +16,14 @@ const NAV = [
   { to: '/posiciones',          label: 'Posiciones' },
   { to: '/lideres',             label: 'Líderes' },
   { to: '/defensiva',           label: 'Defensiva' },
-  //{ to: '/ofensiva',            label: 'Ofensiva' },
+  { to: '/ofensiva',            label: 'Ofensiva' },
   { to: '/colectivo',           label: 'Colectivo' },
-  //{ to: '/estadisticas-equipo', label: 'Por equipo' },
-  
-  
-  { to: '/torneo',              label: 'Torneo' },
-  { to: '/nosotros',            label: 'Nosotros' },
-  { to: '/fichas-equipos',      label: 'Fichas de Equipos' },
+  { to: '/estadisticas-equipo', label: 'Por equipo' },
   { to: '/reporte-equipo',      label: 'Reporte por Equipo' },
   { to: '/incidencias',         label: 'Incidencias' },
+  { to: '/fichas-equipos',      label: 'Fichas de Equipos' },
+  { to: '/torneo',              label: 'Torneo' },
+  { to: '/nosotros',            label: 'Nosotros' },
 ];
 
 export function Marcador({ onCambiarCategoria }) {

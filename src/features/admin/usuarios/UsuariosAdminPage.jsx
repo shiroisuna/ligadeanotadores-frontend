@@ -205,9 +205,9 @@ function ModalUsuario({ usuario, onCerrar, onGuardado }) {
               </div>
             </div>
             <div className="campo">
-              <label>Equipo al que queda atado</label>
-              <select required value={equipoId} onChange={(e) => setEquipoId(e.target.value)}>
-                <option value="">Selecciona…</option>
+              <label>Equipo (opcional — si lo dejas vacío, solo tendrá los juegos que le asignes)</label>
+              <select value={equipoId} onChange={(e) => setEquipoId(e.target.value)}>
+                <option value="">Sin equipo (solo juegos asignados)</option>
                 {editando && usuario.equipo_inscrito_id && !inscritos.some((i) => Number(i.id) === Number(usuario.equipo_inscrito_id)) && (
                   <option value={usuario.equipo_inscrito_id}>Actual: {usuario.equipo}</option>
                 )}

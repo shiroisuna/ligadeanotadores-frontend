@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Marcador } from "../../../components/Marcador";
 import { TeamBadge } from "../../../components/TeamBadge";
 import { usePlayerModal } from "../../../components/PlayerModalProvider";
 import { api } from "../../../api/client";
-import { formatInnings } from '../../../utils/innings';
 
 // [clave del stat, título de la tarjeta, ícono, dirección ('desc'|'asc')]
 const TARJETAS_BATEO = [
@@ -21,6 +20,7 @@ const TARJETAS_BATEO = [
 
 const TARJETAS_PITCHEO = [
   ['efectividad', 'Efectividad (EFE)', '🎯', 'asc'],
+  ['promedio_ganados', 'Average G/P', '⚖️', 'desc'],
   ['ganados', 'Ganados (G)', '🏆', 'desc'],
   ['salvados', 'Salvados (S)', '🛡️', 'desc'],
   ['ponches', 'Ponches (SO)', '🔥', 'desc'],
@@ -29,7 +29,7 @@ const TARJETAS_PITCHEO = [
 
 function formatValor(stat, valor) {
   if (valor == null) return '—';
-  if (stat === 'promedio_bateo' || stat === 'slugging') {
+  if (stat === 'promedio_bateo' || stat === 'slugging' || stat === 'promedio_ganados') {
     const n = Number(valor);
     return n >= 1000 ? (n / 1000).toFixed(3) : '.' + String(Math.round(n)).padStart(3, '0');
   }
@@ -37,17 +37,37 @@ function formatValor(stat, valor) {
     return Number(valor).toFixed(2);
   }
   if (stat === 'innings_lanzados') {
-    return formatInnings(valor);
+    return formatInningsFraccion(valor);
   }
   return valor;
 }
 
+// Convierte un decimal (ej. 1.33) a fracción de innings (ej. "1 1/3"),
+// redondeando al más cercano entre 1/3, 1/2 y 2/3.
+function formatInningsFraccion(valor) {
+  const n = Number(valor);
+  if (Number.isNaN(n)) return '—';
+  const entero = Math.floor(n);
+  const frac = n - entero;
+  const FRACCIONES = [
+    { valor: 0, texto: '' },
+    { valor: 1 / 3, texto: '1/3' },
+    { valor: 1 / 2, texto: '1/2' },
+    { valor: 2 / 3, texto: '2/3' },
+  ];
+  let mejor = FRACCIONES[0];
+  let menorDif = Math.abs(frac - mejor.valor);
+  for (const f of FRACCIONES) {
+    const dif = Math.abs(frac - f.valor);
+    if (dif < menorDif) { mejor = f; menorDif = dif; }
+  }
+  if (!mejor.texto) return `${entero}`;
+  return entero > 0 ? `${entero} ${mejor.texto}` : mejor.texto;
+}
 
-function TarjetaLider({ titulo, icono, filas, statKey, direccion, abrirJugador, depto }) {
-  const ordenadas = [...filas].sort((a, b) => {
-    const va = Number(a[statKey]) || 0, vb = Number(b[statKey]) || 0;
-    return direccion === 'desc' ? vb - va : va - vb;
-  }).slice(0, 10);
+function TarjetaLider({ titulo, icono, filas, statKey, abrirJugador, depto, nota }) {
+  // El servidor ya aplica el mínimo reglamentario y los criterios de desempate (Reglamento 21.03)
+  const ordenadas = filas.slice(0, 10);
 
   return (
     <div className="tarjeta-lista" style={{ padding: 'var(--space-4)' }}>
@@ -55,6 +75,7 @@ function TarjetaLider({ titulo, icono, filas, statKey, direccion, abrirJugador, 
         <span style={{ fontSize: 20 }}>{icono}</span>
         <h3 style={{ margin: 0, fontSize: 16 }}>{titulo}</h3>
       </div>
+      {nota && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--color-ink-soft)', marginBottom: 6 }}>{nota}</div>}
       <div style={{ borderTop: '1px solid var(--color-line)' }} />
       {ordenadas.length === 0 && (
         <p style={{ color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)', fontSize: 13, padding: 'var(--space-3) 0' }}>
@@ -64,7 +85,7 @@ function TarjetaLider({ titulo, icono, filas, statKey, direccion, abrirJugador, 
       {ordenadas.map((f, i) => {
         const extra = depto === 'bateo'
           ? `VB: ${f.vb ?? '—'} · HC: ${f.hits ?? '—'}`
-          : `IL: ${f.innings_lanzados != null ? formatInnings(f.innings_lanzados) : '—'} · JG: ${f.ganados ?? '—'}`;
+          : `IL: ${f.innings_lanzados != null ? formatInningsFraccion(f.innings_lanzados) : '—'} · JG: ${f.ganados ?? '—'}`;
         return (
           <div key={f.roster_id} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -92,40 +113,25 @@ function TarjetaLider({ titulo, icono, filas, statKey, direccion, abrirJugador, 
   );
 }
 
-// Sección completa (grid de tarjetas) para UN grupo, con su propio umbral
-// de calificación calculado solo entre los jugadores de ese grupo.
-function SeccionGrupo({ nombreGrupo, mostrarTitulo, filas, campoUmbral, tarjetas, abrirJugador, depto }) {
-  const { filasCalifican, umbral } = useMemo(() => {
-    const valores = filas.map((f) => Number(f[campoUmbral]) || 0).filter((v) => v > 0);
-    if (!valores.length) return { filasCalifican: filas, umbral: 0 };
-    const media = valores.reduce((a, b) => a + b, 0) / valores.length;
-    const u = Math.round((media * (2 / 3)) * 10) / 10;
-    return { filasCalifican: filas.filter((f) => (Number(f[campoUmbral]) || 0) >= u), umbral: u };
-  }, [filas, campoUmbral]);
-
+// Sección completa (grid de tarjetas) para UN grupo. Cada tarjeta recibe las filas de SU estadística,
+// ya ordenadas y filtradas por el servidor según el reglamento.
+function SeccionGrupo({ nombreGrupo, mostrarTitulo, filasPorStat, gruposMap, tarjetas, abrirJugador, depto, notas }) {
   return (
     <div style={{ marginBottom: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-        {mostrarTitulo && (
-          <h2 style={{ fontSize: 18, color: 'var(--blue-txt)', margin: 0 }}>Grupo {nombreGrupo}</h2>
-        )}
-        {umbral > 0 && (
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--color-ink-soft)' }}>
-            Mínimo: <b>{campoUmbral === 'al' ? umbral : formatInnings(umbral, '0')}</b> {campoUmbral === 'al' ? 'AL' : 'IL'}
-          </span>
-        )}
-      </div>
+      {mostrarTitulo && (
+        <h2 style={{ fontSize: 18, color: 'var(--blue-txt)', margin: '0 0 var(--space-3)' }}>Grupo {nombreGrupo}</h2>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
-        {tarjetas.map(([statKey, titulo, icono, direccion]) => (
+        {tarjetas.map(([statKey, titulo, icono]) => (
           <TarjetaLider
             key={statKey}
             titulo={titulo}
             icono={icono}
-            filas={filasCalifican}
+            filas={(filasPorStat[statKey] || []).filter((f) => (gruposMap[f.equipo_inscrito_id] || 'General') === nombreGrupo)}
             statKey={statKey}
-            direccion={direccion}
             abrirJugador={abrirJugador}
             depto={depto}
+            nota={notas[statKey]}
           />
         ))}
       </div>
@@ -138,38 +144,52 @@ export default function LideresPage() {
   const [temporadaCategoriaId, setTemporadaCategoriaId] = useState(null);
   const [categoria, setCategoria] = useState(null);
   const [depto, setDepto] = useState('bateo');
-  const [filas, setFilas] = useState([]);
+  const [filasPorStat, setFilasPorStat] = useState({});
+  const [reglas, setReglas] = useState(null);
   const [gruposMap, setGruposMap] = useState({}); // equipo_inscrito_id -> grupo
   const [cargando, setCargando] = useState(false);
 
   function alCambiarCategoria(id, cat) { setTemporadaCategoriaId(id); setCategoria(cat); }
 
+  const tarjetas = depto === 'bateo' ? TARJETAS_BATEO : TARJETAS_PITCHEO;
+
   useEffect(() => {
     if (!temporadaCategoriaId) return;
     setCargando(true);
-    const stat = depto === 'bateo' ? 'promedio_bateo' : 'efectividad';
     Promise.all([
       api.get(`/equipos/inscritos?temporada_categoria_id=${temporadaCategoriaId}`),
-      api.get(`/lideres/${depto}?temporada_categoria_id=${temporadaCategoriaId}&stat=${stat}&limit=100`),
-    ]).then(([inscritos, data]) => {
+      api.get(`/lideres/reglas?temporada_categoria_id=${temporadaCategoriaId}`).catch(() => null),
+      Promise.all(tarjetas.map(([stat]) =>
+        api.get(`/lideres/${depto}?temporada_categoria_id=${temporadaCategoriaId}&stat=${stat}&limit=100`)
+          .then((data) => [stat, data]))),
+    ]).then(([inscritos, r, resultados]) => {
       const mapa = {};
       inscritos.forEach((e) => { mapa[e.id] = e.grupo || 'General'; });
       setGruposMap(mapa);
-      setFilas(data);
+      setReglas(r);
+      setFilasPorStat(Object.fromEntries(resultados));
     }).finally(() => setCargando(false));
   }, [temporadaCategoriaId, depto]);
 
-  const campoUmbral = depto === 'bateo' ? 'al' : 'innings_lanzados';
-  const tarjetas = depto === 'bateo' ? TARJETAS_BATEO : TARJETAS_PITCHEO;
-
-  // Agrupar las filas por grupo (grupo || 'General')
-  const porGrupo = {};
-  for (const f of filas) {
-    const g = gruposMap[f.equipo_inscrito_id] || 'General';
-    if (!porGrupo[g]) porGrupo[g] = [];
-    porGrupo[g].push(f);
+  // Notas de elegibilidad (solo para las estadísticas de promedio)
+  const notas = {};
+  if (reglas) {
+    if (depto === 'bateo') {
+      const t = `Mínimo: ${reglas.bateo_al_por_juego} AL × juegos del equipo`;
+      notas.promedio_bateo = t; notas.slugging = t;
+    } else {
+      const t = `Mínimo: ${reglas.pitcheo_il_por_juego} IL × juegos del equipo`;
+      notas.efectividad = t; notas.promedio_ganados = t;
+    }
   }
-  const nombresGrupos = Object.keys(porGrupo).sort();
+
+  // Grupos presentes (grupo || 'General')
+  const todasFilas = Object.values(filasPorStat).flat();
+  const nombresGrupos = [...new Set([
+    ...Object.values(gruposMap),
+    ...todasFilas.map((f) => gruposMap[f.equipo_inscrito_id] || 'General'),
+  ])].sort();
+  const hayDatos = todasFilas.length > 0;
 
   return (
     <div>
@@ -188,18 +208,19 @@ export default function LideresPage() {
         </div>
 
         {cargando && <div className="vacio">Cargando…</div>}
-        {!cargando && filas.length === 0 && <div className="vacio">Sin estadísticas todavía.</div>}
+        {!cargando && !hayDatos && <div className="vacio">Ningún jugador cumple todavía el mínimo reglamentario.</div>}
 
-        {!cargando && filas.length > 0 && nombresGrupos.map((nombreGrupo) => (
+        {!cargando && hayDatos && nombresGrupos.map((nombreGrupo) => (
           <SeccionGrupo
             key={nombreGrupo}
             nombreGrupo={nombreGrupo}
             mostrarTitulo={nombresGrupos.length > 1}
-            filas={porGrupo[nombreGrupo]}
-            campoUmbral={campoUmbral}
+            filasPorStat={filasPorStat}
+            gruposMap={gruposMap}
             tarjetas={tarjetas}
             abrirJugador={abrirJugador}
             depto={depto}
+            notas={notas}
           />
         ))}
       </main>

@@ -3,12 +3,65 @@ import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { usePlayerModal } from '../../../components/PlayerModalProvider';
 import { api } from '../../../api/client';
-import { formatInnings } from '../../../utils/innings';
 
 function formatAve(valor) {
   const n = Number(valor) || 0;
   if (n >= 1000) return (n / 1000).toFixed(3);
   return '.' + String(Math.round(n)).padStart(3, '0');
+}
+
+function TablaGrupo({ g, abrirJugador }) {
+  return (
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      {g.jugadores.length === 0 ? (
+        <div className="vacio">
+          Ningún jugador alcanza el mínimo reglamentario: {g.minimo_por_juego} innings jugados × juegos de su equipo.
+        </div>
+      ) : (
+        <>
+          <p style={{
+            fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)',
+            padding: '0 var(--space-3)', margin: '0 0 var(--space-2)',
+          }}>
+            Para calificar, el jugador debe tener al menos <b>{g.minimo_por_juego} innings jugados × juegos de su equipo</b> (Reglamento de Competencias).
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left' }}>Equipo</th>
+                  <th style={{ textAlign: 'left' }}>Jugador</th>
+                  <th>INJ</th><th>O</th><th>A</th><th>E</th><th>TL</th><th>AVED</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.jugadores.map((j) => (
+                  <tr key={j.roster_id}>
+                    <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TeamBadge nombre={j.equipo} logoUrl={j.logo_url} tamano={22} />
+                        {j.equipo}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                      <button
+                        onClick={() => abrirJugador(j.roster_id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--blue-txt)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+                      >
+                        {j.nombres} {j.apellidos}
+                      </button>
+                    </td>
+                    <td>{j.ij}</td><td>{j.o}</td><td>{j.a}</td><td>{j.e}</td><td>{j.tl}</td>
+                    <td style={{ fontWeight: 700 }}>{formatAve(j.aved)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function DefensivaPage() {
@@ -45,60 +98,21 @@ export default function DefensivaPage() {
 
         {cargando && <div className="vacio">Cargando…</div>}
 
-        {!cargando && grupos.map((g) => (
-          <div key={g.posicion} className="tarjeta-lista" style={{ marginBottom: 'var(--space-5)' }}>
+        {!cargando && grupos.map((posicionData) => (
+          <div key={posicionData.posicion} className="tarjeta-lista" style={{ marginBottom: 'var(--space-5)' }}>
             <div className="tarjeta-lista__cabecera">
-              <h3>{g.etiqueta}</h3>
+              <h3>{posicionData.etiqueta}</h3>
             </div>
-
-            {g.jugadores.length === 0 ? (
-              <div className="vacio">
-                Ningún jugador alcanza el mínimo de {formatInnings(g.umbral_ij, '0')} innings jugados en esta posición
-                (2/3 del promedio: {g.media_ij}).
+            {posicionData.grupos.map((g) => (
+              <div key={g.grupo}>
+                {posicionData.grupos.length > 1 && (
+                  <h4 style={{ fontSize: 13, color: 'var(--blue-txt)', margin: 'var(--space-3) 0 8px', fontWeight: 700 }}>
+                    Grupo {g.grupo}
+                  </h4>
+                )}
+                <TablaGrupo g={g} abrirJugador={abrirJugador} />
               </div>
-            ) : (
-              <>
-                <p style={{
-                  fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)',
-                  padding: '0 var(--space-3)', margin: '0 0 var(--space-2)',
-                }}>
-                  Para calificar, el jugador debe tener al menos <b>{formatInnings(g.umbral_ij, '0')} innings jugados</b> (2/3 de la media: <b>{formatInnings(g.media_ij, '0')}</b>).
-                </p>
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="tabla">
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: 'left' }}>Equipo</th>
-                        <th style={{ textAlign: 'left' }}>Jugador</th>
-                        <th>INJ</th><th>O</th><th>A</th><th>E</th><th>TL</th><th>AVED</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {g.jugadores.map((j) => (
-                        <tr key={j.roster_id}>
-                          <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <TeamBadge nombre={j.equipo} logoUrl={j.logo_url} tamano={22} />
-                              {j.equipo}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                            <button
-                              onClick={() => abrirJugador(j.roster_id)}
-                              style={{ background: 'none', border: 'none', color: 'var(--blue-txt)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
-                            >
-                              {j.nombres} {j.apellidos}
-                            </button>
-                          </td>
-                          <td>{formatInnings(j.ij, '0')}</td><td>{j.o}</td><td>{j.a}</td><td>{j.e}</td><td>{j.tl}</td>
-                          <td style={{ fontWeight: 700 }}>{formatAve(j.aved)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+            ))}
           </div>
         ))}
       </main>

@@ -95,7 +95,7 @@ export function Header() {
 
           <div className="hdr__selects">
             <div className="hdr__sel-group">
-              <label className="hdr__sel-label">Temporada</label>
+              <label className="hdr__sel-label">Liga</label>
               <select
                 className="hdr__select"
                 value={temporadaId}
