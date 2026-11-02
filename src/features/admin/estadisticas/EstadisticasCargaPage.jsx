@@ -5,7 +5,7 @@ import { useToast } from '../../../components/Toast';
 import { useAuth } from '../../../auth/AuthContext';
 import { InputNumerico } from '../../../components/InputNumerico';
 import { InputInnings } from '../../../components/InputInnings';
-import { navegarConFlechas } from '../../../components/Navegacionceldas';
+import { navegarConFlechas } from '../../../components/navegacionCeldas';
 
 // Esta pantalla ya NO es una segunda carga: las estadísticas se generan
 // solas al guardar el box score. Aquí se revisan, se corrigen si hay un
