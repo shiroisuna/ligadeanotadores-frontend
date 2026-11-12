@@ -228,11 +228,28 @@ function ModalEditarJuego({ juego, inscritos, onCerrar, onGuardado }) {
     e.preventDefault();
     setEnviando(true);
     try {
+      const cambiaEquipos = Number(visitante) !== Number(juego.equipo_visitante_id) || Number(local) !== Number(juego.equipo_local_id);
+      const esIntercambio = Number(visitante) === Number(juego.equipo_local_id) && Number(local) === Number(juego.equipo_visitante_id);
+      let confirmar = false;
+      if (cambiaEquipos && !esIntercambio) {
+        const d = await api.getAuth(`/juegos/${juego.id}/resumen-datos`);
+        const lineas = ['bateo_juego', 'pitcheo_juego', 'est_bateo', 'est_pitcheo', 'est_fildeo', 'entradas_juego', 'incidencias']
+          .reduce((a, k) => a + (Number(d[k]) || 0), 0);
+        const hayMarcador = juego.carreras_local != null || juego.carreras_visitante != null;
+        if (lineas > 0 || hayMarcador) {
+          if (!confirm('Vas a cambiar a OTROS equipos en un juego que ya tiene resultado/box score.\n\nSe borrarán el marcador, el box score, las estadísticas, las entradas y las incidencias de este juego, y quedará como "programado".\nSe conservan fecha, estadio, árbitros y anotadores.\n\n¿Continuar?')) {
+            setEnviando(false);
+            return;
+          }
+          confirmar = true;
+        }
+      }
       await api.put(`/juegos/${juego.id}`, {
         equipo_visitante_id: Number(visitante),
         equipo_local_id: Number(local),
         fase, fecha, hora: hora || null,
         estadio_id: estadioId || null,
+        confirmar_borrado_datos: confirmar,
       });
       onGuardado();
     } catch (err) {
@@ -268,7 +285,7 @@ function ModalEditarJuego({ juego, inscritos, onCerrar, onGuardado }) {
           </select>
         </div>
         <p style={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--color-ink-soft)' }}>
-          Los equipos solo se pueden cambiar si el juego aún no tiene box score ni estadísticas cargadas.
+          Si solo inviertes local y visitante, el resultado y el box score se conservan (se intercambian los lados). Si cambias a otros equipos y el juego ya tiene datos, se te pedirá confirmar que se borran.
         </p>
         <div className="campo">
           <label>Estadio (opcional)</label>
