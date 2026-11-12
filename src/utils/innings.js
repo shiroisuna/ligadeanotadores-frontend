@@ -14,3 +14,23 @@ export function formatInnings(valor) {
   if (!mejor.t) return String(ent);
   return ent > 0 ? `${ent} ${mejor.t}` : mejor.t;
 }
+
+// Convierte lo que escribe el anotador a decimal con 2 decimales (el formato que guarda la base):
+//   "6" -> 6 · "6 1/3" -> 6.33 · "1/3" -> 0.33 · "6.1" -> 6.33 · "6.2" -> 6.67 · "6,33" -> 6.33 · "6.5" -> 6.5
+// (.1 y .2 después del punto se leen como outs: un tercio y dos tercios.)
+export function parseInnings(texto) {
+  if (texto === null || texto === undefined) return 0;
+  if (typeof texto === 'number') return Number.isFinite(texto) ? texto : 0;
+  const t = String(texto).trim().replace(',', '.');
+  if (!t) return 0;
+  const redondear = (x) => Math.round(x * 100) / 100;
+  const fr = t.match(/^(?:(\d+)[\s-]+)?(\d+)\/(\d+)$/);
+  if (fr) {
+    const ent = Number(fr[1] || 0), den = Number(fr[3]);
+    return den ? redondear(ent + Number(fr[2]) / den) : ent;
+  }
+  const outs = t.match(/^(\d+)\.([012])$/);
+  if (outs) return redondear(Number(outs[1]) + Number(outs[2]) / 3);
+  const n = Number(t);
+  return Number.isFinite(n) ? redondear(n) : 0;
+}
