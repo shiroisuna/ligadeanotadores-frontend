@@ -39,6 +39,8 @@ import AnotadoresAdminPage from './features/admin/anotadores/AnotadoresAdminPage
 import UsuariosAdminPage from './features/admin/usuarios/UsuariosAdminPage';
 import EstadiosAdminPage from './features/admin/estadios/EstadiosAdminPage';
 import ArbitrosAdminPage from './features/admin/arbitros/ArbitrosAdminPage';
+import AnotadoresOficialesAdminPage from './features/admin/anotadores-oficiales/AnotadoresOficialesAdminPage';
+import FasesAdminPage from './features/admin/fases/FasesAdminPage';
 
 
 //Torneos
@@ -101,6 +103,8 @@ export default function App() {
                 <Route path="anotadores" element={<AnotadoresAdminPage />} />
                 <Route path="usuarios" element={<RequireRole roles={['administrador']}><UsuariosAdminPage /></RequireRole>} />
                 <Route path="estadios" element={<RequireRole roles={['administrador']}><EstadiosAdminPage /></RequireRole>} />
+                <Route path="fases" element={<RequireRole roles={['administrador']}><FasesAdminPage /></RequireRole>} />
+                <Route path="anotadores-oficiales" element={<RequireRole roles={['administrador']}><AnotadoresOficialesAdminPage /></RequireRole>} />
                 <Route path="arbitros" element={<RequireRole roles={['administrador']}><ArbitrosAdminPage /></RequireRole>} />
                 <Route path="fotos" element={<FotosAdminPage />} />
                 <Route path="contenido" element={<ContenidoAdminPage />} />

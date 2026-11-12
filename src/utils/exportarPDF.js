@@ -4,6 +4,22 @@ import autoTable from 'jspdf-autotable';
 const TITULO   = 'LIGA DE ANOTADORES DE BÉISBOL Y SOFTBOL';
 const SUBTITULO = 'Municipio Independencia — Santa Teresa del Tuy';
 const FUNDADA   = 'Liga de Anotadores — Fundada: 18/01/1983';
+const RECOPILADOR = 'Recopilador: Prof. José Luis Quevedo';
+
+// Pie de página en TODAS las hojas del PDF y descarga
+function guardarConPie(doc, nombre) {
+  const total = doc.internal.getNumberOfPages();
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(110, 110, 110);
+    doc.text(RECOPILADOR, w / 2, h - 3, { align: 'center' });
+  }
+  doc.save(nombre);
+}
 
 // Carga el logo como base64 para que jsPDF pueda usarlo
 function cargarImagenBase64(url) {
@@ -59,6 +75,54 @@ async function membrete(doc) {
 // ─────────────────────────────────────────────────────────────────────
 // Exportar CALENDARIO a PDF
 // ─────────────────────────────────────────────────────────────────────
+// PDF genérico para cualquier tabla del portal, con el membrete (logo + liga + fundación).
+// secciones: [{ titulo?, nota?, columnas: ['Pos','Equipo',...], filas: [[...], ...] }]
+export async function exportarTablaPDF({ titulo, subtitulo = '', secciones = [], nombreArchivo = 'tabla' }) {
+  const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'landscape' });
+  let y = await membrete(doc);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(30, 58, 138);
+  doc.text(titulo, doc.internal.pageSize.getWidth() / 2, y + 7, { align: 'center' });
+  y += 10;
+  if (subtitulo) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text(subtitulo, doc.internal.pageSize.getWidth() / 2, y + 3, { align: 'center' });
+    y += 6;
+  }
+  y += 3;
+  for (const sec of secciones) {
+    if (!sec.filas.length && !sec.nota) continue;
+    if (y > 175) { doc.addPage(); y = await membrete(doc) + 4; }
+    if (sec.titulo) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(30, 58, 138);
+      doc.text(sec.titulo, 8, y + 3);
+      y += 5;
+    }
+    if (sec.nota) {
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(100, 100, 100);
+      doc.text(sec.nota, 8, y + 2);
+      y += 4;
+    }
+    if (sec.filas.length) {
+      autoTable(doc, {
+        startY: y,
+        head: [sec.columnas],
+        body: sec.filas,
+        margin: { left: 8, right: 8, top: 32 },
+        styles: { fontSize: 8, cellPadding: 1.2, halign: 'center' },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 247, 252] },
+        columnStyles: Object.fromEntries((sec.alineadasIzq ?? [1]).map((i) => [i, { halign: 'left' }])),
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    }
+  }
+  guardarConPie(doc, `${nombreArchivo}.pdf`);
+}
+
 export async function exportarCalendarioPDF({ porFecha, categoriaNombre, temporadaNombre, copaNombre }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
   let y = await membrete(doc);
@@ -124,7 +188,7 @@ export async function exportarCalendarioPDF({ porFecha, categoriaNombre, tempora
     if (y > 175) { doc.addPage(); y = await membrete(doc) + 2; }
   }
 
-  doc.save('calendario-' + (categoriaNombre || 'liga').replace(/\s+/g, '_') + '.pdf');
+  guardarConPie(doc, 'calendario-' + (categoriaNombre || 'liga').replace(/\s+/g, '_') + '.pdf');
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -232,7 +296,7 @@ export async function exportarResultadoPDF({ juego, estadisticas }) {
 
   const nombre = (juego.equipo_local + '-vs-' + juego.equipo_visitante + '-' + juego.fecha)
     .replace(/\s+/g, '_');
-  doc.save('resultado-' + nombre + '.pdf');
+  guardarConPie(doc, 'resultado-' + nombre + '.pdf');
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -313,7 +377,7 @@ export async function exportarTorneoPDF({ torneo, fases, cruces }) {
     doc.text('🏆 CAMPEÓN: ' + cruceFinal.equipo_ganador, ancho / 2, y + 6, { align: 'center' });
   }
 
-  doc.save('torneo-' + torneo.nombre.replace(/\s+/g, '_') + '.pdf');
+  guardarConPie(doc, 'torneo-' + torneo.nombre.replace(/\s+/g, '_') + '.pdf');
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -430,7 +494,7 @@ export async function exportarReporteEquipoPDF({
     });
   }
 
-  doc.save('Reporte_Equipo_' + (equipo || 'equipo').replace(/\s+/g, '_') + '.pdf');
+  guardarConPie(doc, 'Reporte_Equipo_' + (equipo || 'equipo').replace(/\s+/g, '_') + '.pdf');
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -484,7 +548,7 @@ export async function exportarIncidenciasPDF({ juego, incidencias = [] }) {
   }
 
   const nombre = `Incidencias_${(juego.equipo_local || '')}_vs_${(juego.equipo_visitante || '')}_${juego.fecha || ''}`.replace(/\s+/g, '_');
-  doc.save(nombre + '.pdf');
+  guardarConPie(doc, nombre + '.pdf');
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -536,7 +600,7 @@ export async function exportarIncidenciasRangoPDF({ categoria, fechaInicio, fech
     });
   }
 
-  doc.save(`Incidencias_${fechaInicio}_a_${fechaFin}.pdf`);
+  guardarConPie(doc, `Incidencias_${fechaInicio}_a_${fechaFin}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -579,7 +643,7 @@ export async function exportarFichasEquipoPDF({ equipo, categoria, temporadaNomb
     columnStyles: { 0: { halign: 'center', fontStyle: 'bold' } },
   });
 
-  doc.save(`Ficha_Equipo_${(equipo || 'equipo').replace(/\s+/g, '_')}.pdf`);
+  guardarConPie(doc, `Ficha_Equipo_${(equipo || 'equipo').replace(/\s+/g, '_')}.pdf`);
 }
 
 
@@ -613,7 +677,7 @@ function ilFraccion(valor) {
 
 const N = (v) => Number(v) || 0;
 
-const COLS_BS_BATEO = [
+const COLS_BS_BATEO_TODAS = [
   ['vb', 'VB'], ['ca', 'CA'], ['hc', 'HC'], ['bb', 'BB'], ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'],
   ['in_', 'IN'], ['al', 'AL'], ['h2', 'H2'], ['h3', 'H3'], ['hr', 'HR'], ['ba', 'BA'], ['ci', 'CI'],
   ['br', 'BR'], ['or_', 'OR'], ['so', 'SO'], ['ij', 'IJ'], ['o', 'O'], ['a', 'A'], ['e', 'E'],
@@ -627,7 +691,25 @@ const COLS_BS_PITCHEO = [
   ['wp', 'WP'], ['bk', 'BK'],
 ];
 
-function tablaBateoPDF(doc, y, titulo, filas) {
+// Posición por entrada (P, C, 1B… BE, CE) — solo si se cargó
+function tablaPosicionesPDF(doc, y, filas, nEnt) {
+  const keys = Array.from({ length: Math.min(9, nEnt) }, (_, i) => `pos_${i + 1}`);
+  if (!filas.some((f) => keys.some((k) => f[k]))) return y;
+  autoTable(doc, {
+    startY: y,
+    head: [['Nº', 'POSICIÓN POR ENTRADA', ...keys.map((_, i) => String(i + 1))]],
+    body: filas.map((f) => [f.numero_camiseta ?? '', `${f.nombres || ''} ${f.apellidos || ''}`.trim(), ...keys.map((k) => f[k] || '')]),
+    margin: { left: 6, right: 6 },
+    styles: { fontSize: 6, cellPadding: 0.7, halign: 'center', lineWidth: 0 },
+    headStyles: { fillColor: [235, 238, 245], textColor: AZUL, fontStyle: 'bold', lineWidth: 0.1, lineColor: [120, 120, 120] },
+    columnStyles: { 1: { halign: 'left', cellWidth: 52 } },
+    theme: 'plain',
+  });
+  return doc.lastAutoTable.finalY + 3;
+}
+
+function tablaBateoPDF(doc, y, titulo, filas, llevaDef = true) {
+  const COLS_BS_BATEO = llevaDef ? COLS_BS_BATEO_TODAS : COLS_BS_BATEO_TODAS.filter(([k]) => !['ij', 'o', 'a', 'e', 'tl', 'dp', 'di'].includes(k));
   const totales = {};
   COLS_BS_BATEO.forEach(([k]) => {
     totales[k] = k === 'tl'
@@ -654,14 +736,17 @@ function tablaBateoPDF(doc, y, titulo, filas) {
   return doc.lastAutoTable.finalY + 3;
 }
 
+const ladoCorto = (v) => ({ derecho: 'D', zurdo: 'Z', ambidiestro: 'A' }[v] || '');
+
 function tablaPitcheoPDF(doc, y, nombreEquipo, filas) {
   if (!filas.length) return y;
   autoTable(doc, {
     startY: y,
-    head: [['Nº', `Labor lanzadores — ${nombreEquipo}`, ...COLS_BS_PITCHEO.map(([, l]) => l)]],
+    head: [['Nº', `Labor lanzadores — ${nombreEquipo}`, 'D/Z', ...COLS_BS_PITCHEO.map(([, l]) => l)]],
     body: filas.map((f) => [
       f.numero_camiseta ?? '',
       `${f.nombres || ''} ${f.apellidos || ''}`.trim(),
+      ladoCorto(f.lado),
       ...COLS_BS_PITCHEO.map(([k]) => (k === 'il' ? ilFraccion(f.il) : N(f[k]))),
     ]),
     margin: { left: 6, right: 6 },
@@ -672,7 +757,7 @@ function tablaPitcheoPDF(doc, y, nombreEquipo, filas) {
   return doc.lastAutoTable.finalY + 3;
 }
 
-export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pitcheo = [], arbitros = [], incidencias = [] }) {
+export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pitcheo = [], arbitros = [], anotadores = [], incidencias = [] }) {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
   const ancho = doc.internal.pageSize.getWidth();
 
@@ -719,10 +804,10 @@ export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pi
   autoTable(doc, {
     startY: 14,
     margin: { left: 78, right: 6 },
-    head: [['', 'ENTRADAS', ...Array.from({ length: nEnt }, (_, i) => String(i + 1)), 'C', 'H', 'E']],
+    head: [['', 'ENTRADAS', ...Array.from({ length: nEnt }, (_, i) => String(i + 1)), 'C', 'H', 'E', 'QB']],
     body: [
-      ['VS', juego.equipo_visitante, ...Array.from({ length: nEnt }, (_, i) => porEntrada(idVisit, i + 1)), N(juego.carreras_visitante), hV, N(juego.errores_visitante)],
-      ['HC', juego.equipo_local,     ...Array.from({ length: nEnt }, (_, i) => porEntrada(idLocal, i + 1)), N(juego.carreras_local),     hL, N(juego.errores_local)],
+      ['VS', juego.equipo_visitante, ...Array.from({ length: nEnt }, (_, i) => porEntrada(idVisit, i + 1)), N(juego.carreras_visitante), hV, N(juego.errores_visitante), juego.qb_visitante ?? '—'],
+      ['HC', juego.equipo_local,     ...Array.from({ length: nEnt }, (_, i) => porEntrada(idLocal, i + 1)), N(juego.carreras_local),     hL, N(juego.errores_local), juego.qb_local ?? '—'],
     ],
     styles: { fontSize: 7, cellPadding: 0.9, halign: 'center', fontStyle: 'bold' },
     headStyles: { fillColor: [255, 255, 255], textColor: ROJO, lineWidth: 0 },
@@ -747,8 +832,10 @@ export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pi
   y += 5;
 
   // ── Tablas: visitante primero, luego local ──
-  y = tablaBateoPDF(doc, y, `${juego.equipo_visitante} (V)`, bateoV);
-  y = tablaBateoPDF(doc, y, `${juego.equipo_local} (HC)`, bateoL);
+  y = tablaBateoPDF(doc, y, `${juego.equipo_visitante} (V)`, bateoV, Number(juego.lleva_defensiva) !== 0);
+  y = tablaPosicionesPDF(doc, y, bateoV, nEnt);
+  y = tablaBateoPDF(doc, y, `${juego.equipo_local} (HC)`, bateoL, Number(juego.lleva_defensiva) !== 0);
+  y = tablaPosicionesPDF(doc, y, bateoL, nEnt);
   y = tablaPitcheoPDF(doc, y, juego.equipo_visitante, pitV);
   y = tablaPitcheoPDF(doc, y, juego.equipo_local, pitL);
 
@@ -758,7 +845,7 @@ export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pi
   const filasTec = [
     ['TIEMPO DE JUEGO', `(INICIO: ${hhmm(juego.hora_inicio || juego.hora)}) (TÉRMINO: ${hhmm(juego.hora_final)})${juego.duracion_minutos ? `  ${Math.floor(juego.duracion_minutos / 60)} HORA(S) Y ${juego.duracion_minutos % 60} MINUTOS` : ''}`],
     ['ÁRBITROS', `${nombresArb || '—'}${juego.entidad_arbitros ? `     ENTIDAD= ${juego.entidad_arbitros}` : ''}`],
-    ['ANOTADOR', `${juego.anotador_oficial || '—'}${juego.entidad_anotador ? `     ENTIDAD= ${juego.entidad_anotador}` : ''}`],
+    ['ANOTADOR', `${[...anotadores.map((a) => `${a.nombres} ${a.apellidos}`), juego.anotador_oficial].filter(Boolean).join(' - ') || '—'}${juego.entidad_anotador ? `     ENTIDAD= ${juego.entidad_anotador}` : ''}`],
     ['FECHA', fechaTxt.toUpperCase()],
     ['ESTADIO', `${juego.estadio || '—'}${juego.estadio_direccion ? `. ${juego.estadio_direccion}` : ''}`.toUpperCase()],
   ];
@@ -821,5 +908,5 @@ export async function exportarBoxScorePDF({ juego, entradas = [], bateo = [], pi
   }
 
   const nombre = `BoxScore_${juego.equipo_visitante}_vs_${juego.equipo_local}_${String(juego.fecha || '').slice(0, 10)}`.replace(/\s+/g, '_');
-  doc.save(nombre + '.pdf');
+  guardarConPie(doc, nombre + '.pdf');
 }

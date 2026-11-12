@@ -1,8 +1,9 @@
+import { formatInnings } from '../../../utils/innings';
+import { exportarTablaPDF } from '../../../utils/exportarPDF';
 import { useEffect, useState } from 'react';
 import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import { api } from '../../../api/client';
-import { formatInnings } from '../../../utils/innings';
 
 const TABS = [
   { id: 'bateo', label: 'Bateo' },
@@ -39,6 +40,22 @@ export default function ColectivoPage() {
 
   const filas = colectivo[tab] || [];
 
+  async function descargarPDF() {
+    const DEF = {
+      bateo: [['AVG', (e) => formatAve(e.promedio_bateo)], ['VB', (e) => e.vb], ['C', (e) => e.ca], ['H', (e) => e.hc], ['2B', (e) => e.h2], ['3B', (e) => e.h3],
+        ['HR', (e) => e.hr], ['CI', (e) => e.ci], ['BB', (e) => e.bb], ['SO', (e) => e.so], ['BR', (e) => e.br], ['OR', (e) => e.or_]],
+      pitcheo: [['AVG', (e) => formatAve(e.promedio_bateo_permitido)], ['G', (e) => e.g], ['P', (e) => e.p], ['S', (e) => e.s], ['IL', (e) => formatInnings(e.il)],
+        ['SO', (e) => e.so], ['BB', (e) => e.bb], ['CL', (e) => e.cl], ['EFE', (e) => Number(e.efectividad || 0).toFixed(2)]],
+      fildeo: [['AVE', (e) => formatAve(e.promedio_fildeo)], ['O', (e) => e.o], ['A', (e) => e.a], ['E', (e) => e.e], ['TL', (e) => e.tl], ['DP', (e) => e.dp]],
+    }[tab];
+    await exportarTablaPDF({
+      titulo: `${tab.toUpperCase()} COLECTIVO`,
+      subtitulo: categoria?.categoria_nombre || '',
+      secciones: [{ columnas: ['Equipo', ...DEF.map(([l]) => l)], alineadasIzq: [0], filas: filas.map((e) => [e.equipo, ...DEF.map(([, f]) => f(e) ?? 0)]) }],
+      nombreArchivo: `Colectivo_${tab}_${(categoria?.categoria_nombre || 'liga').replace(/\s+/g, '_')}`,
+    });
+  }
+
   return (
     <div>
       <Marcador onCambiarCategoria={alCambiarCategoria} />
@@ -73,6 +90,11 @@ export default function ColectivoPage() {
           ))}
         </div>
 
+        {filas.length > 0 && (
+          <div style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}>
+            <button className="boton boton--fantasma" onClick={descargarPDF}>📄 Descargar PDF</button>
+          </div>
+        )}
         {cargando && <div className="vacio">Cargando…</div>}
 
         {!cargando && filas.length === 0 && (
@@ -123,7 +145,7 @@ export default function ColectivoPage() {
                     {tab === 'pitcheo' && (
                       <>
                         <td style={{ fontWeight: 700 }}>{formatAve(eq.promedio_bateo_permitido)}</td>
-                        <td>{eq.g}</td><td>{eq.p}</td><td>{eq.s}</td><td>{formatInnings(eq.il, '0')}</td>
+                        <td>{eq.g}</td><td>{eq.p}</td><td>{eq.s}</td><td>{formatInnings(eq.il)}</td>
                         <td>{eq.so}</td><td>{eq.bb}</td><td>{eq.cl}</td><td>{Number(eq.efectividad || 0).toFixed(2)}</td>
                       </>
                     )}

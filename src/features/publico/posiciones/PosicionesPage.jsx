@@ -3,18 +3,35 @@ import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
 import MatrizCruces from '../../../components/MatrizCruces';
 import { api } from '../../../api/client';
-import { formatInnings } from '../../../utils/innings';
+import { exportarTablaPDF } from '../../../utils/exportarPDF';
+
+const NOMBRE_FASE = {
+  eliminatoria: 'Eliminatoria', concentrado: 'Concentrado', semifinal: 'Semifinal', final: 'Final',
+};
 
 function n(v) { return v === null || v === undefined ? '—' : v; }
 
-// Nivel de la tabla según la categoría:
-//   sencillo → JJ, JG, JP, JE, PTOS, AVE (Semillas)
-//   basico   → + C.A, C.P, D.C, REND
-//   avanzado → + IJO, M1, IJD, M2, BCE
-function nivelTabla(categoria) {
-  const nivel = categoria?.nivel_standings || 'basico';
-  if (nivel === 'basico' && /semilla/i.test(categoria?.categoria_nombre || '')) return 'sencillo';
-  return nivel;
+// Convierte un decimal (ej. 2.67) a fracción de innings (ej. "2 2/3"),
+// redondeando al más cercano entre 1/3, 1/2 y 2/3.
+function formatInningsFraccion(valor) {
+  const num = Number(valor);
+  if (Number.isNaN(num)) return '—';
+  const entero = Math.floor(num);
+  const frac = num - entero;
+  const FRACCIONES = [
+    { valor: 0, texto: '' },
+    { valor: 1 / 3, texto: '1/3' },
+    { valor: 1 / 2, texto: '1/2' },
+    { valor: 2 / 3, texto: '2/3' },
+  ];
+  let mejor = FRACCIONES[0];
+  let menorDif = Math.abs(frac - mejor.valor);
+  for (const f of FRACCIONES) {
+    const dif = Math.abs(frac - f.valor);
+    if (dif < menorDif) { mejor = f; menorDif = dif; }
+  }
+  if (!mejor.texto) return `${entero}`;
+  return entero > 0 ? `${entero} ${mejor.texto}` : mejor.texto;
 }
 
 export default function PosicionesPage() {
@@ -22,22 +39,31 @@ export default function PosicionesPage() {
   const [categoria, setCategoria] = useState(null);
   const [filas, setFilas] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [fases, setFases] = useState([{ fase: 'eliminatoria' }]);
+  const [fase, setFase] = useState('eliminatoria');
 
   function alCambiarCategoria(id, cat) {
     setTemporadaCategoriaId(id);
     setCategoria(cat);
   }
 
+  // Fases disponibles de la categoría (la eliminatoria siempre; las demás cuando el admin las configura)
+  useEffect(() => {
+    if (!temporadaCategoriaId) return;
+    setFase('eliminatoria');
+    api.get(`/fases?temporada_categoria_id=${temporadaCategoriaId}`)
+      .then((f) => setFases(f.length ? f : [{ fase: 'eliminatoria' }]))
+      .catch(() => setFases([{ fase: 'eliminatoria' }]));
+  }, [temporadaCategoriaId]);
+
   useEffect(() => {
     if (!temporadaCategoriaId) return;
     setCargando(true);
-    api.get(`/posiciones?temporada_categoria_id=${temporadaCategoriaId}`)
+    api.get(`/posiciones?temporada_categoria_id=${temporadaCategoriaId}&fase=${fase}`)
       .then(setFilas).finally(() => setCargando(false));
-  }, [temporadaCategoriaId]);
+  }, [temporadaCategoriaId, fase]);
 
-  const nivel = nivelTabla(categoria);
-  const sencilla = nivel === 'sencillo';
-  const avanzado = nivel === 'avanzado';
+  const avanzado = categoria?.nivel_standings === 'avanzado';
 
   const grupos = [];
   for (const f of filas) {
@@ -45,6 +71,27 @@ export default function PosicionesPage() {
     let grp = grupos.find((x) => x.nombre === g);
     if (!grp) { grp = { nombre: g, filas: [] }; grupos.push(grp); }
     grp.filas.push(f);
+  }
+
+  async function descargarPDF() {
+    const cols = ['Pos', 'Equipo', 'JJ', 'JG', 'JP', 'JE', 'AVE', 'PTOS', 'C.A',
+      ...(avanzado ? ['IJO', 'M1'] : []), 'C.P', ...(avanzado ? ['IJD', 'M2', 'BCE'] : []), 'D.C', 'REND'];
+    const secciones = grupos.map((g) => ({
+      titulo: grupos.length > 1 ? `Grupo ${g.nombre}` : undefined,
+      nota: fases.length > 1 ? `Fase: ${NOMBRE_FASE[fase]}` : undefined,
+      columnas: cols,
+      filas: g.filas.map((f, i) => [
+        i + 1, f.equipo, f.jj, f.jg, f.jp, f.je, n(f.ave), n(f.ptos), f.carreras_anotadas,
+        ...(avanzado ? [formatInningsFraccion(f.ijo), n(f.media1)] : []), f.carreras_permitidas,
+        ...(avanzado ? [formatInningsFraccion(f.ijd), n(f.media2), n(f.bce)] : []),
+        `${f.dc > 0 ? '+' : ''}${f.dc}`, f.rend != null ? `${f.rend}%` : '—',
+      ]),
+    }));
+    await exportarTablaPDF({
+      titulo: `TABLA DE POSICIONES${fases.length > 1 ? ' — ' + NOMBRE_FASE[fase].toUpperCase() : ''}`,
+      subtitulo: categoria ? `${categoria.categoria_nombre}${categoria.copa_nombre ? ' — ' + categoria.copa_nombre : ''}` : '',
+      secciones, nombreArchivo: `Posiciones_${(categoria?.categoria_nombre || 'liga').replace(/\s+/g, '_')}_${fase}`,
+    });
   }
 
   return (
@@ -55,8 +102,24 @@ export default function PosicionesPage() {
         <p style={{ color: 'var(--txt-3)', marginBottom: 'var(--space-5)', fontSize: 14 }}>
           {categoria ? `${categoria.categoria_nombre}${categoria.copa_nombre ? ' — ' + categoria.copa_nombre : ''}` : ''}
         </p>
+        {fases.length > 1 && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+            {fases.map((f) => (
+              <button key={f.fase}
+                className={`boton ${fase === f.fase ? 'boton--dorado' : 'boton--fantasma'}`}
+                onClick={() => setFase(f.fase)}>
+                {NOMBRE_FASE[f.fase]}
+              </button>
+            ))}
+          </div>
+        )}
+        {filas.length > 0 && (
+          <div style={{ marginBottom: 'var(--space-4)' }}>
+            <button className="boton boton--fantasma" onClick={descargarPDF}>📄 Descargar PDF</button>
+          </div>
+        )}
         {cargando && <div className="vacio">Cargando…</div>}
-        {!cargando && filas.length === 0 && <div className="vacio">Sin juegos registrados todavía.</div>}
+        {!cargando && filas.length === 0 && <div className="vacio">{fase === 'eliminatoria' ? 'Sin juegos registrados todavía.' : 'Esta fase aún no tiene equipos asignados.'}</div>}
         {!cargando && grupos.map((g) => (
           <div key={g.nombre} style={{ marginBottom: 'var(--space-6)' }}>
             {grupos.length > 1 && (
@@ -69,12 +132,11 @@ export default function PosicionesPage() {
                     <th>Pos</th>
                     <th style={{ textAlign: 'left' }}>Equipo</th>
                     <th>JJ</th><th>JG</th><th>JP</th><th>JE</th>
-                    <th>PTOS</th><th>AVE</th>
-                    {!sencilla && <th>C.A</th>}
+                    <th>AVE</th><th>PTOS</th><th>C.A</th>
                     {avanzado && <><th>IJO</th><th>M1</th></>}
-                    {!sencilla && <th>C.P</th>}
+                    <th>C.P</th>
                     {avanzado && <><th>IJD</th><th>M2</th><th>BCE</th></>}
-                    {!sencilla && <><th>D.C</th><th>REND</th></>}
+                    <th>D.C</th><th>REND</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -91,16 +153,14 @@ export default function PosicionesPage() {
                       <td style={{ color: 'var(--color-win)', fontWeight: 600 }}>{f.jg}</td>
                       <td style={{ color: 'var(--color-loss)', fontWeight: 600 }}>{f.jp}</td>
                       <td>{f.je}</td>
-                      <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{n(f.ptos)}</td>
-                      <td>{n(f.ave)}</td>
-                      {!sencilla && <td>{f.carreras_anotadas}</td>}
-                      {avanzado && <><td>{formatInnings(f.ijo)}</td><td>{n(f.media1)}</td></>}
-                      {!sencilla && <td>{f.carreras_permitidas}</td>}
-                      {avanzado && <><td>{formatInnings(f.ijd)}</td><td>{n(f.media2)}</td><td>{n(f.bce)}</td></>}
-                      {!sencilla && <>
-                        <td>{f.dc > 0 ? '+' : ''}{f.dc}</td>
-                        <td>{f.rend != null ? `${f.rend}%` : '—'}</td>
-                      </>}
+                      <td style={{ color: 'var(--blue-txt)', fontWeight: 700 }}>{n(f.ave)}</td>
+                      <td>{n(f.ptos)}</td>
+                      <td>{f.carreras_anotadas}</td>
+                      {avanzado && <><td>{formatInningsFraccion(f.ijo)}</td><td>{n(f.media1)}</td></>}
+                      <td>{f.carreras_permitidas}</td>
+                      {avanzado && <><td>{formatInningsFraccion(f.ijd)}</td><td>{n(f.media2)}</td><td>{n(f.bce)}</td></>}
+                      <td>{f.dc > 0 ? '+' : ''}{f.dc}</td>
+                      <td>{f.rend != null ? `${f.rend}%` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -108,7 +168,7 @@ export default function PosicionesPage() {
             </div>
           </div>
         ))}
-        <MatrizCruces temporadaCategoriaId={temporadaCategoriaId} />
+        <MatrizCruces temporadaCategoriaId={temporadaCategoriaId} fase={fase} />
       </main>
     </div>
   );

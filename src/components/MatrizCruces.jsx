@@ -26,7 +26,7 @@ function celda(fila, columna, juegos) {
 // categoría. Se usa embebida dentro de PosicionesPage — no trae su
 // propio Marcador ni selector de categoría, recibe temporadaCategoriaId
 // ya resuelto desde afuera.
-export default function MatrizCruces({ temporadaCategoriaId }) {
+export default function MatrizCruces({ temporadaCategoriaId, fase = 'eliminatoria' }) {
   const [equipos, setEquipos] = useState([]);
   const [juegos, setJuegos] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -34,11 +34,12 @@ export default function MatrizCruces({ temporadaCategoriaId }) {
   useEffect(() => {
     if (!temporadaCategoriaId) return;
     setCargando(true);
+    // Cada fase muestra solo sus equipos (con el grupo de esa fase) y sus juegos.
     Promise.all([
-      api.get(`/equipos/inscritos?temporada_categoria_id=${temporadaCategoriaId}`),
-      api.get(`/juegos?temporada_categoria_id=${temporadaCategoriaId}`),
+      api.get(`/fases/equipos?temporada_categoria_id=${temporadaCategoriaId}&fase=${fase}`),
+      api.get(`/juegos?temporada_categoria_id=${temporadaCategoriaId}&fase=${fase}`),
     ]).then(([e, j]) => { setEquipos(e); setJuegos(j); }).finally(() => setCargando(false));
-  }, [temporadaCategoriaId]);
+  }, [temporadaCategoriaId, fase]);
 
   const grupos = {};
   for (const e of equipos) { const g = e.grupo || 'General'; if (!grupos[g]) grupos[g] = []; grupos[g].push(e); }

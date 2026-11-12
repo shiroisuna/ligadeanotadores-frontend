@@ -5,7 +5,7 @@ import { useToast } from '../../../components/Toast';
 import { InputNumerico } from '../../../components/InputNumerico';
 import { navegarConFlechas } from '../../../components/navegacionCeldas';
 
-const COLS_BATEO = [
+const COLS_BATEO_TODAS = [
   ['posicion', 'Pos', 'text'], ['vb', 'VB'], ['ca', 'CA'], ['hc', 'H'], ['bb', 'BB'],
   ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'], ['in_', 'IN'], ['al', 'AL'],
   ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'], ['ba', 'BA'], ['ci', 'CI'],
@@ -22,10 +22,13 @@ const COLS_PITCHEO = [
 ];
 
 const NUM_ENTRADAS_DEFECTO = 7;
-const POSICIONES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
+// Códigos de posición por entrada. BE = bateador emergente, CE = corredor emergente.
+const POSICIONES_INNING = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SF', 'DH', 'BE', 'CE'];
+const CAMPOS_POS = Array.from({ length: 9 }, (_, i) => `pos_${i + 1}`);
+const POSICIONES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SF', 'DH'];
 
 function filaVacia(roster, columnas) {
-  const fila = { roster_id: roster.id, nombres: roster.nombres, apellidos: roster.apellidos, numero_camiseta: roster.numero_camiseta, equipoEtiqueta: roster.equipoEtiqueta };
+  const fila = { lado: roster.lado, roster_id: roster.id, nombres: roster.nombres, apellidos: roster.apellidos, numero_camiseta: roster.numero_camiseta, equipoEtiqueta: roster.equipoEtiqueta };
   columnas.forEach(([key, , tipo]) => { fila[key] = tipo === 'text' || tipo === 'select' ? '' : 0; });
   return fila;
 }
@@ -65,6 +68,7 @@ export default function BoxScoreAdminPage() {
   const [guardandoBateo, setGuardandoBateo] = useState(false);
   const [guardandoPitcheo, setGuardandoPitcheo] = useState(false);
   const [guardandoEntradas, setGuardandoEntradas] = useState(false);
+  const [lado, setLado] = useState('visitante');   // 'visitante' | 'local' — equipo cuyo box score se está cargando
 
   useEffect(() => {
     async function cargar() {
@@ -85,15 +89,15 @@ export default function BoxScoreAdminPage() {
 
       // Visitante primero, luego local (home club)
       const roster = [
-        ...rv.map((r) => ({ ...r, equipoEtiqueta: j.equipo_visitante })),
-        ...rl.map((r) => ({ ...r, equipoEtiqueta: j.equipo_local })),
+        ...rv.map((r) => ({ ...r, equipoEtiqueta: j.equipo_visitante, lado: 'visitante' })),
+        ...rl.map((r) => ({ ...r, equipoEtiqueta: j.equipo_local, lado: 'local' })),
       ];
 
       // Bateo: igual que Pitcheo, una fila por cada línea ya guardada,
       // con selector de jugador y posición — no una fila fija por roster.
       setFilasBateo(existente.bateo.map((eb) => {
         const jugador = roster.find((r) => r.id === eb.roster_id);
-        return { ...eb, nombres: jugador?.nombres || '', apellidos: jugador?.apellidos || '', numero_camiseta: jugador?.numero_camiseta, equipoEtiqueta: jugador?.equipoEtiqueta || '' };
+        return { ...eb, nombres: jugador?.nombres || '', apellidos: jugador?.apellidos || '', numero_camiseta: jugador?.numero_camiseta, equipoEtiqueta: jugador?.equipoEtiqueta || '', lado: jugador?.lado || 'visitante' };
       }));
       setFilasPitcheo(roster.map((r) => fusionarConExistente(
         filaVacia(r, COLS_PITCHEO), existente.pitcheo.find((x) => x.roster_id === r.id), COLS_PITCHEO
@@ -146,8 +150,14 @@ export default function BoxScoreAdminPage() {
   async function guardarBateo() {
     setGuardandoBateo(true);
     try {
-      await api.put(`/boxscore/${juegoId}/bateo`, { lineas: aNumero(filasBateo.map((f) => ({ ...f, tl: (Number(f.o)||0)+(Number(f.a)||0)+(Number(f.e)||0) })), ['roster_id', 'posicion', 'nombres', 'apellidos', 'numero_camiseta', 'equipoEtiqueta']) });
-      notificar('Bateo guardado', 'exito');
+      // Solo las filas del equipo activo; el servidor reemplaza el bateo de ESE equipo
+      // (las filas quitadas con × se borran de verdad al guardar).
+      const delEquipo = filasBateo.filter((f) => f.lado === lado && f.roster_id);
+      await api.put(`/boxscore/${juegoId}/bateo`, {
+        equipo_inscrito_id: equipoActivoId,
+        lineas: aNumero(delEquipo.map((f) => ({ ...f, tl: (Number(f.o)||0)+(Number(f.a)||0)+(Number(f.e)||0) })), ['roster_id', 'posicion', 'nombres', 'apellidos', 'numero_camiseta', 'equipoEtiqueta', 'lado', ...CAMPOS_POS]),
+      });
+      notificar(`Bateo de ${nombreActivo} guardado`, 'exito');
     } catch (err) {
       notificar(err.message, 'error');
     } finally {
@@ -158,8 +168,14 @@ export default function BoxScoreAdminPage() {
   async function guardarPitcheo() {
     setGuardandoPitcheo(true);
     try {
-      await api.put(`/boxscore/${juegoId}/pitcheo`, { lineas: aNumero(filasPitcheo, ['roster_id', 'nombres', 'apellidos', 'numero_camiseta', 'equipoEtiqueta']) });
-      notificar('Pitcheo guardado', 'exito');
+      // Solo los lanzadores del equipo activo que tengan algo cargado
+      const lanzaron = filasPitcheo.filter((f) => f.lado === lado
+        && COLS_PITCHEO.some(([k]) => Number(f[k]) > 0));
+      await api.put(`/boxscore/${juegoId}/pitcheo`, {
+        equipo_inscrito_id: equipoActivoId,
+        lineas: aNumero(lanzaron, ['roster_id', 'nombres', 'apellidos', 'numero_camiseta', 'equipoEtiqueta', 'lado']),
+      });
+      notificar(`Pitcheo de ${nombreActivo} guardado`, 'exito');
     } catch (err) {
       notificar(err.message, 'error');
     } finally {
@@ -185,8 +201,20 @@ export default function BoxScoreAdminPage() {
 
   if (cargando) return <div className="vacio">Cargando…</div>;
   if (!juego) return <div className="vacio">Juego no encontrado.</div>;
+  const llevaDef = Number(juego.lleva_defensiva) !== 0;
+  const nEntPos = Math.min(9, Math.max(NUM_ENTRADAS_DEFECTO, entradasLocal.length));
+  const COLS_BATEO = llevaDef ? COLS_BATEO_TODAS : COLS_BATEO_TODAS.filter(([k]) => !['ij', 'o', 'a', 'e', 'tl', 'dp', 'di'].includes(k));
 
-  const totalesBateo = totalizar(filasBateo.map((f) => ({ ...f, tl: (Number(f.o)||0)+(Number(f.a)||0)+(Number(f.e)||0) })), COLS_BATEO);
+  const esLocal = lado === 'local';
+  const equipoActivoId = esLocal ? juego.equipo_local_id : juego.equipo_visitante_id;
+  const nombreActivo = esLocal ? juego.equipo_local : juego.equipo_visitante;
+  const rosterActivo = esLocal ? rosterLocal : rosterVisitante;
+  const etiquetaActiva = esLocal ? 'Home club' : 'Visitante';
+  // Filas visibles = solo las del equipo activo (conservan su índice real en el arreglo completo)
+  const bateoVisible = filasBateo.map((f, idx) => ({ f, idx })).filter(({ f }) => f.lado === lado);
+  const pitcheoVisible = filasPitcheo.filter((f) => f.lado === lado);
+
+  const totalesBateo = totalizar(bateoVisible.map(({ f }) => ({ ...f, tl: (Number(f.o)||0)+(Number(f.a)||0)+(Number(f.e)||0) })), COLS_BATEO);
   const carrerasLocalCalc = entradasLocal.reduce((a, b) => a + (Number(b) || 0), 0);
   const carrerasVisitanteCalc = entradasVisitante.reduce((a, b) => a + (Number(b) || 0), 0);
 
@@ -221,6 +249,19 @@ export default function BoxScoreAdminPage() {
           {lineaGanador}
         </p>
       )}
+
+      {/* ── EQUIPO A CARGAR ── */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--space-4)', alignItems: 'center' }}>
+        <button className={`boton ${lado === 'visitante' ? 'boton--dorado' : 'boton--fantasma'}`} onClick={() => setLado('visitante')}>
+          Visitante: {juego.equipo_visitante}
+        </button>
+        <button className={`boton ${lado === 'local' ? 'boton--dorado' : 'boton--fantasma'}`} onClick={() => setLado('local')}>
+          Home club: {juego.equipo_local}
+        </button>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
+          Cada equipo se carga y se guarda por separado (las carreras por entrada de abajo son de los dos).
+        </span>
+      </div>
 
       {/* ── ENTRADAS ── */}
       <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-5)' }}>
@@ -283,17 +324,17 @@ export default function BoxScoreAdminPage() {
       {/* ── BATEO ── */}
       <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-6)' }}>
         <div className="tarjeta-lista__cabecera">
-          <h3>Bateo</h3>
+          <h3>Bateo — {etiquetaActiva}: {nombreActivo}</h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="boton boton--fantasma boton--chico"
               onClick={() => setFilasBateo((p) => [...p, {
-                roster_id: '', posicion: 'P', nombres: '', apellidos: '', numero_camiseta: '', equipoEtiqueta: '',
+                roster_id: '', lado, posicion: 'P', nombres: '', apellidos: '', numero_camiseta: '', equipoEtiqueta: nombreActivo,
                 ...Object.fromEntries(COLS_BATEO.filter(([,,t]) => t !== 'text').map(([k]) => [k, 0])),
               }])}>
               + Agregar fila
             </button>
             <button className="boton boton--dorado boton--chico" onClick={guardarBateo} disabled={guardandoBateo}>
-              {guardandoBateo ? 'Guardando…' : 'Guardar bateo'}
+              {guardandoBateo ? 'Guardando…' : `Guardar bateo de ${etiquetaActiva}`}
             </button>
           </div>
         </div>
@@ -307,26 +348,25 @@ export default function BoxScoreAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {filasBateo.map((f, idx) => (
+              {bateoVisible.map(({ f, idx }) => (
                 <tr key={idx}>
                   <td>
                     <select value={f.roster_id}
                       onChange={(e) => {
-                        const r = todoElRoster.find((x) => String(x.id) === e.target.value);
+                        const r = rosterActivo.find((x) => String(x.id) === e.target.value);
                         setBateo(idx, 'roster_id', Number(e.target.value));
                         if (r) {
                           setBateo(idx, 'nombres', r.nombres);
                           setBateo(idx, 'apellidos', r.apellidos);
                           setBateo(idx, 'numero_camiseta', r.numero_camiseta);
-                          setBateo(idx, 'equipoEtiqueta', rosterLocal.some((x) => x.id === r.id) ? juego.equipo_local : juego.equipo_visitante);
+                          setBateo(idx, 'equipoEtiqueta', nombreActivo);
                         }
                       }}
                       style={{ fontFamily: 'var(--font-body)', fontSize: 13, width: '100%' }}>
                       <option value="">Selecciona…</option>
-                      {todoElRoster.map((r) => (
+                      {rosterActivo.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.numero_camiseta != null ? `#${r.numero_camiseta} ` : ''}{r.nombres} {r.apellidos}
-                          {' '}({rosterLocal.some((x) => x.id === r.id) ? juego.equipo_local : juego.equipo_visitante})
                         </option>
                       ))}
                     </select>
@@ -352,12 +392,12 @@ export default function BoxScoreAdminPage() {
                   </td>
                 </tr>
               ))}
-              {filasBateo.length === 0 && (
+              {bateoVisible.length === 0 && (
                 <tr><td colSpan={COLS_BATEO.length + 2} style={{ textAlign: 'center', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)', padding: 'var(--space-4)' }}>
-                  Usa "+ Agregar fila" para registrar el bateo.
+                  Usa "+ Agregar fila" para registrar el bateo de este equipo.
                 </td></tr>
               )}
-              {filasBateo.length > 0 && (
+              {bateoVisible.length > 0 && (
                 <tr style={{ background: '#f5f5f5', fontWeight: 700 }}>
                   <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>TOTALES</td>
                   {COLS_BATEO.map(([key,, tipo]) => (
@@ -371,12 +411,60 @@ export default function BoxScoreAdminPage() {
         </div>
       </div>
 
+      {/* ── POSICIÓN POR ENTRADA ── */}
+      <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-6)' }}>
+        <div className="tarjeta-lista__cabecera">
+          <h3>Posición por entrada — {nombreActivo}</h3>
+          <button className="boton boton--dorado boton--chico" onClick={guardarBateo} disabled={guardandoBateo}>
+            {guardandoBateo ? 'Guardando…' : `Guardar bateo y posiciones de ${etiquetaActiva}`}
+          </button>
+        </div>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)', padding: '0 var(--space-3)', margin: 0 }}>
+          Posición que jugó cada bateador en cada entrada. BE = bateador emergente, CE = corredor emergente.
+          Se guarda junto con el bateo (agrega primero los jugadores en la tabla de Bateo).
+        </p>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tabla tabla-editable">
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', minWidth: 180 }}>Jugador</th>
+                {Array.from({ length: nEntPos }, (_, i) => <th key={i} style={{ width: 62 }}>{i + 1}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {bateoVisible.map(({ f, idx }) => (
+                <tr key={idx}>
+                  <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', fontSize: 13 }}>
+                    {f.numero_camiseta != null && f.numero_camiseta !== '' ? `#${f.numero_camiseta} ` : ''}{f.nombres} {f.apellidos}
+                    <small style={{ opacity: 0.6 }}> {f.equipoEtiqueta}</small>
+                  </td>
+                  {Array.from({ length: nEntPos }, (_, i) => (
+                    <td key={i}>
+                      <select value={f[`pos_${i + 1}`] || ''} onChange={(e) => setBateo(idx, `pos_${i + 1}`, e.target.value || null)}
+                        style={{ width: 58, fontSize: 12 }}>
+                        <option value="">—</option>
+                        {POSICIONES_INNING.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {bateoVisible.length === 0 && (
+                <tr><td colSpan={nEntPos + 1} style={{ textAlign: 'center', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-body)', padding: 'var(--space-4)' }}>
+                  Primero agrega los jugadores en la tabla de Bateo.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* ── PITCHEO ── */}
       <div className="tarjeta-lista" style={{ marginBottom: 'var(--space-6)' }}>
         <div className="tarjeta-lista__cabecera">
-          <h3>Labor de lanzadores</h3>
+          <h3>Labor de lanzadores — {etiquetaActiva}: {nombreActivo}</h3>
           <button className="boton boton--dorado boton--chico" onClick={guardarPitcheo} disabled={guardandoPitcheo}>
-            {guardandoPitcheo ? 'Guardando…' : 'Guardar pitcheo'}
+            {guardandoPitcheo ? 'Guardando…' : `Guardar pitcheo de ${etiquetaActiva}`}
           </button>
         </div>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)', padding: '0 var(--space-3)' }}>
@@ -394,7 +482,7 @@ export default function BoxScoreAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {filasPitcheo.map((f) => (
+              {pitcheoVisible.map((f) => (
                 <tr key={f.roster_id}>
                   <td style={{ fontFamily: 'var(--font-body)', color: 'var(--color-ink-soft)' }}>{f.numero_camiseta ?? ''}</td>
                   <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>{f.nombres} {f.apellidos}</td>

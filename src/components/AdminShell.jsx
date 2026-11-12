@@ -11,12 +11,14 @@ const ENLACES_ADMIN = [
   { to: '/admin/categorias',         label: 'Categorías' },
   { to: '/admin/equipos',            label: 'Equipos y roster' },
   { to: '/admin/juegos',             label: 'Calendario y juegos' },
-  { to: '/admin/estadisticas',       label: 'Box score y estadísticas' },
+  { to: '/admin/fases',              label: 'Fases del torneo' },
+  { to: '/admin/estadisticas',       label: 'Estadísticas por juego' },
   { to: '/admin/incidencias',        label: 'Incidencias' },
   { to: '/admin/usuarios',           label: 'Usuarios y accesos' },
   { to: '/admin/anotadores',         label: 'Anotadores' },
   { to: '/admin/estadios',           label: 'Estadios' },
   { to: '/admin/arbitros',           label: 'Árbitros' },
+  { to: '/admin/anotadores-oficiales', label: 'Anotadores oficiales' },
   { to: '/admin/control-lanzadores', label: 'Control de lanzadores' },
   { to: '/admin/torneos',            label: 'Torneos' },
   { to: '/admin/aprobaciones',       label: 'Aprobaciones',             badge: true },
@@ -27,7 +29,7 @@ const ENLACES_ADMIN = [
 
 const ENLACES_ANOTADOR = [
   { to: '/admin/juegos',             label: 'Calendario y juegos' },
-  { to: '/admin/estadisticas',       label: 'Cargar box score' },
+  { to: '/admin/estadisticas',       label: 'Cargar estadísticas' },
   { to: '/admin/incidencias',        label: 'Incidencias' },
   { to: '/admin/control-lanzadores', label: 'Control de lanzadores' },
 ];

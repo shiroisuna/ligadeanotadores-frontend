@@ -1,3 +1,4 @@
+import { formatInnings, KEYS_INNINGS } from '../../../utils/innings';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TeamBadge } from '../../../components/TeamBadge';
@@ -7,7 +8,7 @@ import { exportarBoxScorePDF } from '../../../utils/exportarPDF';
 
 const N = (v) => Number(v) || 0;
 
-const COLS_BATEO = [
+const COLS_BATEO_TODAS = [
   ['vb', 'VB'], ['ca', 'CA'], ['hc', 'HC'], ['bb', 'BB'], ['sh', 'SH'], ['sf', 'SF'], ['gp', 'GP'],
   ['h2', '2B'], ['h3', '3B'], ['hr', 'HR'], ['ci', 'CI'], ['br', 'BR'], ['or_', 'OR'], ['so', 'SO'],
   ['ij', 'IJ'], ['o', 'O'], ['a', 'A'], ['e', 'E'],
@@ -67,7 +68,8 @@ function CajaDecision({ titulo, valor }) {
   );
 }
 
-function TablaBateo({ filas, abrirJugador }) {
+function TablaBateo({ filas, abrirJugador, llevaDef = true }) {
+  const COLS_BATEO = llevaDef ? COLS_BATEO_TODAS : COLS_BATEO_TODAS.filter(([k]) => !['ij', 'o', 'a', 'e'].includes(k));
   const tot = (k) => filas.reduce((a, f) => a + N(f[k]), 0);
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -78,7 +80,7 @@ function TablaBateo({ filas, abrirJugador }) {
             <th style={{ textAlign: 'left' }}>Jugador</th>
             <th>POS</th>
             {COLS_BATEO.map(([k, l]) => <th key={k}>{l}</th>)}
-            <th>TL</th>
+            {llevaDef && <th>TL</th>}
           </tr>
         </thead>
         <tbody>
@@ -92,21 +94,53 @@ function TablaBateo({ filas, abrirJugador }) {
                 </button>
               </td>
               <td>{f.posicion || ''}</td>
-              {COLS_BATEO.map(([k]) => <td key={k}>{N(f[k])}</td>)}
-              <td>{N(f.o) + N(f.a) + N(f.e)}</td>
+              {COLS_BATEO.map(([k]) => <td key={k}>{KEYS_INNINGS.includes(k) ? formatInnings(f[k]) : N(f[k])}</td>)}
+              {llevaDef && <td>{N(f.o) + N(f.a) + N(f.e)}</td>}
             </tr>
           ))}
           {filas.length > 0 && (
             <tr style={{ fontWeight: 700 }}>
               <td colSpan={2}>TOTALES</td>
               <td></td>
-              {COLS_BATEO.map(([k]) => <td key={k}>{tot(k)}</td>)}
-              <td>{tot('o') + tot('a') + tot('e')}</td>
+              {COLS_BATEO.map(([k]) => <td key={k}>{KEYS_INNINGS.includes(k) ? formatInnings(tot(k)) : tot(k)}</td>)}
+              {llevaDef && <td>{tot('o') + tot('a') + tot('e')}</td>}
             </tr>
           )}
           {filas.length === 0 && (
             <tr><td colSpan={COLS_BATEO.length + 4} style={{ textAlign: 'center', fontFamily: 'var(--font-body)' }}>Sin bateo cargado.</td></tr>
           )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const ladoCorto = (v) => ({ derecho: 'D', zurdo: 'Z', ambidiestro: 'A' }[v] || '');
+
+const POS_KEYS = Array.from({ length: 9 }, (_, i) => `pos_${i + 1}`);
+
+// Posición de cada bateador en cada entrada (solo si se cargó)
+function TablaPosiciones({ filas, nEnt, abrirJugador }) {
+  const n = Math.min(9, nEnt);
+  if (!filas.some((f) => POS_KEYS.some((k) => f[k]))) return null;
+  return (
+    <div style={{ overflowX: 'auto', marginTop: 'var(--space-2)' }}>
+      <table className="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th style={{ textAlign: 'left' }}>Posición por entrada</th>
+            {Array.from({ length: n }, (_, i) => <th key={i}>{i + 1}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => (
+            <tr key={f.id ?? f.roster_id}>
+              <td>{f.numero_camiseta ?? ''}</td>
+              <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{f.nombres} {f.apellidos}</td>
+              {Array.from({ length: n }, (_, i) => <td key={i}>{f[`pos_${i + 1}`] || ''}</td>)}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -123,6 +157,7 @@ function TablaPitcheo({ filas, abrirJugador }) {
           <thead>
             <tr>
               <th style={{ textAlign: 'left' }}>Lanzador</th>
+              <th title="Derecho / Zurdo / Ambidiestro">D/Z</th>
               {COLS_PITCHEO.map(([k, l]) => <th key={k}>{l}</th>)}
             </tr>
           </thead>
@@ -135,6 +170,7 @@ function TablaPitcheo({ filas, abrirJugador }) {
                     {f.nombres} {f.apellidos}
                   </button>
                 </td>
+                <td>{ladoCorto(f.lado)}</td>
                 {COLS_PITCHEO.map(([k]) => <td key={k}>{k === 'il' ? ilFraccion(f.il) : N(f[k])}</td>)}
               </tr>
             ))}
@@ -154,6 +190,7 @@ export default function BoxScorePage() {
   const [entradas, setEntradas] = useState([]);
   const [stats, setStats] = useState({ bateo: [], pitcheo: [] });
   const [arbitros, setArbitros] = useState([]);
+  const [anotadores, setAnotadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [descargando, setDescargando] = useState(false);
 
@@ -165,8 +202,9 @@ export default function BoxScorePage() {
       api.get(`/juegos/${juegoId}/entradas`),
       api.get(`/boxscore/${juegoId}`),
       api.get(`/arbitros/juego/${juegoId}`).catch(() => []),
-    ]).then(([j, e, s, a]) => {
-      setJuego(j); setEntradas(e); setStats(s); setArbitros(a);
+      api.get(`/anotadores-oficiales/juego/${juegoId}`).catch(() => []),
+    ]).then(([j, e, s, a, an]) => {
+      setJuego(j); setEntradas(e); setStats(s); setArbitros(a); setAnotadores(an);
     }).finally(() => setCargando(false));
   }, [juegoId]);
 
@@ -185,7 +223,7 @@ export default function BoxScorePage() {
     try {
       const incidencias = await api.get(`/incidencias/${juegoId}`).catch(() => []);
       await exportarBoxScorePDF({
-        juego, entradas, bateo: stats.bateo, pitcheo: stats.pitcheo, arbitros, incidencias,
+        juego, entradas, bateo: stats.bateo, pitcheo: stats.pitcheo, arbitros, anotadores, incidencias,
       });
     } finally {
       setDescargando(false);
@@ -220,11 +258,15 @@ export default function BoxScorePage() {
 
   const lineas = [
     { id: idVisit, nombre: juego.equipo_visitante, logo: juego.logo_visitante, etiqueta: 'V',
-      c: juego.carreras_visitante, h: hits(bateoV, 'hits_visitante'), e: juego.errores_visitante },
+      c: juego.carreras_visitante, h: hits(bateoV, 'hits_visitante'), e: juego.errores_visitante, qb: juego.qb_visitante },
     { id: idLocal, nombre: juego.equipo_local, logo: juego.logo_local, etiqueta: 'HC',
-      c: juego.carreras_local, h: hits(bateoL, 'hits_local'), e: juego.errores_local },
+      c: juego.carreras_local, h: hits(bateoL, 'hits_local'), e: juego.errores_local, qb: juego.qb_local },
   ];
 
+  const cL = N(juego.carreras_local), cV = N(juego.carreras_visitante);
+  const resumenGanador = juego.estado === 'jugado' && cL !== cV
+    ? `EL JUEGO LO GANÓ ${(cL > cV ? juego.equipo_local : juego.equipo_visitante).toUpperCase()} ${Math.max(cL, cV)} A ${Math.min(cL, cV)}`
+    : null;
   const fecha = String(juego.fecha || '').slice(0, 10);
   const titulo = `${juego.equipo_visitante} ${N(juego.carreras_visitante)} - ${N(juego.carreras_local)} ${juego.equipo_local}`;
 
@@ -248,7 +290,7 @@ export default function BoxScorePage() {
               <tr style={{ fontSize: 12, opacity: 0.85 }}>
                 <th style={{ textAlign: 'left', padding: '0 10px' }}>EQUIPO</th>
                 {Array.from({ length: nEnt }, (_, i) => <th key={i} style={{ width: 30 }}>{i + 1}</th>)}
-                <th style={{ width: 44 }}>C</th><th style={{ width: 44 }}>H</th><th style={{ width: 44 }}>E</th>
+                <th style={{ width: 44 }}>C</th><th style={{ width: 44 }}>H</th><th style={{ width: 44 }}>E</th><th style={{ width: 44 }}>QB</th>
               </tr>
             </thead>
             <tbody>
@@ -266,12 +308,17 @@ export default function BoxScorePage() {
                   ))}
                   <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 20, color: '#ffd23f' }}>{N(l.c)}</td>
                   <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 18 }}>{l.h}</td>
-                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 18, borderRadius: '0 8px 8px 0' }}>{N(l.e)}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 18 }}>{N(l.e)}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 18, borderRadius: '0 8px 8px 0' }}>{l.qb ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {resumenGanador && (
+          <p style={{ textAlign: 'center', fontWeight: 800, letterSpacing: 0.5, margin: '4px 0' }}>{resumenGanador}</p>
+        )}
 
         {/* Ganó / Perdió / Salvó */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, margin: 'var(--space-3) 0' }}>
@@ -319,7 +366,8 @@ export default function BoxScorePage() {
           </span>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 12 }}>Visitante</span>
         </div>
-        <TablaBateo filas={bateoV} abrirJugador={abrirJugador} />
+        <TablaBateo filas={bateoV} abrirJugador={abrirJugador} llevaDef={Number(juego.lleva_defensiva) !== 0} />
+        <TablaPosiciones filas={bateoV} nEnt={nEnt} abrirJugador={abrirJugador} />
         <TablaPitcheo filas={pitV} abrirJugador={abrirJugador} />
       </div>
 
@@ -331,7 +379,8 @@ export default function BoxScorePage() {
           </span>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 12 }}>Home club</span>
         </div>
-        <TablaBateo filas={bateoL} abrirJugador={abrirJugador} />
+        <TablaBateo filas={bateoL} abrirJugador={abrirJugador} llevaDef={Number(juego.lleva_defensiva) !== 0} />
+        <TablaPosiciones filas={bateoL} nEnt={nEnt} abrirJugador={abrirJugador} />
         <TablaPitcheo filas={pitL} abrirJugador={abrirJugador} />
       </div>
 
@@ -341,7 +390,8 @@ export default function BoxScorePage() {
         <div style={{ padding: 'var(--space-4)', fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.9 }}>
           <p><b>Tiempo de juego:</b> {juego.hora_inicio ? `Inicio ${String(juego.hora_inicio).slice(0, 5)}` : '—'}{juego.hora_final ? ` · Final ${String(juego.hora_final).slice(0, 5)}` : ''}{juego.duracion_minutos ? ` · ${juego.duracion_minutos} minutos` : ''}</p>
           <p><b>Árbitros:</b> {arbitros.length ? arbitros.map((a) => `${a.nombres} ${a.apellidos}`).join(' - ') : '—'}{juego.entidad_arbitros ? ` — Entidad: ${juego.entidad_arbitros}` : ''}</p>
-          <p><b>Anotador:</b> {juego.anotador_oficial || '—'}{juego.entidad_anotador ? ` — Entidad: ${juego.entidad_anotador}` : ''}</p>
+          {juego.observacion && <p><b>Nota:</b> {juego.observacion}</p>}
+          <p><b>Anotador:</b> {[...anotadores.map((a) => `${a.nombres} ${a.apellidos}`), juego.anotador_oficial].filter(Boolean).join(' - ') || '—'}{juego.entidad_anotador ? ` — Entidad: ${juego.entidad_anotador}` : ''}</p>
           <p><b>Estadio:</b> {juego.estadio || '—'}{juego.estadio_direccion ? ` — ${juego.estadio_direccion}` : ''}</p>
           <p><b>Jugador más valioso:</b> {juego.mvp_nombre || '—'}</p>
         </div>

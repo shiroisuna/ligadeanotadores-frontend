@@ -1,8 +1,8 @@
+import { formatInnings, KEYS_INNINGS } from '../utils/innings';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Modal } from './Modal';
 import { TeamBadge } from './TeamBadge';
 import { api } from '../api/client';
-import { formatInnings } from '../utils/innings';
 
 const Ctx = createContext(null);
 
@@ -59,7 +59,7 @@ function TablaHistorial({ titulo, filas, cols }) {
               <tr key={i}>
                 <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>{formatFecha(f.fecha)}</td>
                 <td style={{ textAlign: 'left', fontFamily: 'var(--font-body)' }}>Vs {f.rival}</td>
-                {cols.map(([k]) => <td key={k}>{k === 'il' || k === 'ij' ? formatInnings(f[k], '0') : (f[k] ?? 0)}</td>)}
+                {cols.map(([k]) => <td key={k}>{KEYS_INNINGS.includes(k) ? formatInnings(f[k]) : (f[k] ?? 0)}</td>)}
               </tr>
             ))}
           </tbody>

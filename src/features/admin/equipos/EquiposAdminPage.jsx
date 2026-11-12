@@ -5,8 +5,7 @@ import { Modal } from '../../../components/Modal';
 import { CampoImagen } from '../../../components/CampoImagen';
 import { useTemporadaCategoria } from '../../../hooks/useTemporadaCategoria';
 
-// SHF = short field (softbol), BA = bateador adicional
-const POSICIONES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SHF', 'DH', 'BA'];
+const POSICIONES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SF', 'DH'];
 const LADOS = [
   { value: 'derecho', label: 'Derecho' },
   { value: 'zurdo', label: 'Zurdo' },

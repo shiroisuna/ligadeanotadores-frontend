@@ -1,3 +1,4 @@
+import { formatInnings, KEYS_INNINGS } from '../../../utils/innings';
 import { useEffect, useState } from 'react';
 import { api } from '../../../api/client';
 import { useTemporadaCategoria } from '../../../hooks/useTemporadaCategoria';
@@ -57,7 +58,7 @@ function TablaColectivo({ titulo, cols, datos, juegos }) {
           <tbody>
             <tr>
               {cols.map(([k]) => (
-                <td key={k} style={{ fontWeight: 700 }}>{datos?.[k] ?? 0}</td>
+                <td key={k} style={{ fontWeight: 700 }}>{KEYS_INNINGS.includes(k) ? formatInnings(datos?.[k]) : (datos?.[k] ?? 0)}</td>
               ))}
             </tr>
           </tbody>

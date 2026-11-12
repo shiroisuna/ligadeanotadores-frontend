@@ -1,3 +1,5 @@
+import { formatInnings } from '../../../utils/innings';
+import { exportarTablaPDF } from '../../../utils/exportarPDF';
 import { useEffect, useState } from 'react';
 import { Marcador } from '../../../components/Marcador';
 import { TeamBadge } from '../../../components/TeamBadge';
@@ -51,7 +53,7 @@ function TablaGrupo({ g, abrirJugador }) {
                         {j.nombres} {j.apellidos}
                       </button>
                     </td>
-                    <td>{j.ij}</td><td>{j.o}</td><td>{j.a}</td><td>{j.e}</td><td>{j.tl}</td>
+                    <td>{formatInnings(j.ij)}</td><td>{j.o}</td><td>{j.a}</td><td>{j.e}</td><td>{j.tl}</td>
                     <td style={{ fontWeight: 700 }}>{formatAve(j.aved)}</td>
                   </tr>
                 ))}
@@ -84,6 +86,26 @@ export default function DefensivaPage() {
       .finally(() => setCargando(false));
   }, [temporadaCategoriaId]);
 
+  async function descargarPDF() {
+    const secciones = [];
+    for (const p of grupos) {
+      for (const g of p.grupos) {
+        secciones.push({
+          titulo: p.grupos.length > 1 ? `${p.etiqueta} — Grupo ${g.grupo}` : p.etiqueta,
+          nota: `Mínimo reglamentario: ${g.minimo_por_juego} innings jugados × juegos de su equipo`,
+          columnas: ['#', 'Equipo', 'Jugador', 'INJ', 'O', 'A', 'E', 'TL', 'AVED'],
+          alineadasIzq: [1, 2],
+          filas: g.jugadores.map((j, i) => [i + 1, j.equipo, `${j.nombres} ${j.apellidos}`, formatInnings(j.ij), j.o, j.a, j.e, j.tl, formatAve(j.aved)]),
+        });
+      }
+    }
+    await exportarTablaPDF({
+      titulo: 'MEJORES A LA DEFENSIVA',
+      subtitulo: categoria?.categoria_nombre || '',
+      secciones, nombreArchivo: `Defensiva_${(categoria?.categoria_nombre || 'liga').replace(/\s+/g, '_')}`,
+    });
+  }
+
   return (
     <div>
       <Marcador onCambiarCategoria={alCambiarCategoria} />
@@ -96,6 +118,11 @@ export default function DefensivaPage() {
           </p>
         </div>
 
+        {grupos.length > 0 && (
+          <div style={{ marginBottom: 'var(--space-4)' }}>
+            <button className="boton boton--fantasma" onClick={descargarPDF}>📄 Descargar PDF</button>
+          </div>
+        )}
         {cargando && <div className="vacio">Cargando…</div>}
 
         {!cargando && grupos.map((posicionData) => (

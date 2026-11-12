@@ -65,6 +65,8 @@ function formatInningsFraccion(valor) {
   return entero > 0 ? `${entero} ${mejor.texto}` : mejor.texto;
 }
 
+const ladoCorto = (v) => ({ derecho: 'D', zurdo: 'Z', ambidiestro: 'A' }[v] || '');
+
 function TarjetaLider({ titulo, icono, filas, statKey, abrirJugador, depto, nota }) {
   // El servidor ya aplica el mínimo reglamentario y los criterios de desempate (Reglamento 21.03)
   const ordenadas = filas.slice(0, 10);
@@ -99,6 +101,7 @@ function TarjetaLider({ titulo, icono, filas, statKey, abrirJugador, depto, nota
                   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue-txt)', fontWeight: 700, fontSize: 14, textAlign: 'left', display: 'block' }}
                 >
                   {f.numero_camiseta != null ? `#${f.numero_camiseta} ` : ''}{f.nombres} {f.apellidos}
+                  {depto === 'pitcheo' && ladoCorto(f.lado) ? ` (${ladoCorto(f.lado)})` : ''}
                 </button>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
                   {f.equipo} · {extra}
