@@ -26,7 +26,7 @@ function celda(fila, columna, juegos) {
 // categoría. Se usa embebida dentro de PosicionesPage — no trae su
 // propio Marcador ni selector de categoría, recibe temporadaCategoriaId
 // ya resuelto desde afuera.
-export default function MatrizCruces({ temporadaCategoriaId, fase = 'eliminatoria' }) {
+export default function MatrizCruces({ temporadaCategoriaId, fase = 'eliminatoria', grupo = '' }) {
   const [equipos, setEquipos] = useState([]);
   const [juegos, setJuegos] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -50,9 +50,9 @@ export default function MatrizCruces({ temporadaCategoriaId, fase = 'eliminatori
   return (
     <div style={{ marginTop: 'var(--space-6)' }}>
       <h2 style={{ fontSize: 20, marginBottom: 'var(--space-4)' }}>Juego por juego</h2>
-      {Object.entries(grupos).map(([nombre, eq]) => (
+      {Object.entries(grupos).filter(([nombre]) => !grupo || nombre === grupo).map(([nombre, eq]) => (
         <div key={nombre} style={{ marginBottom: 'var(--space-6)' }}>
-          {Object.keys(grupos).length > 1 && (
+          {Object.keys(grupos).length > 1 && !grupo && (
             <h3 style={{ fontSize: 13, color: 'var(--blue-txt)', marginBottom: 8, fontWeight: 700 }}>Grupo {nombre}</h3>
           )}
           <div style={{ overflowX: 'auto' }}>

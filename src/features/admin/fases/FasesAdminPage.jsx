@@ -4,10 +4,14 @@ import { useToast } from '../../../components/Toast';
 import { useTemporadaCategoria } from '../../../hooks/useTemporadaCategoria';
 
 const FASES = [
-  { clave: 'concentrado', nombre: 'Concentrado', anterior: 'eliminatoria', usaGrupos: true },
-  { clave: 'semifinal', nombre: 'Semifinal', anterior: 'concentrado', usaGrupos: false },
-  { clave: 'final', nombre: 'Final', anterior: 'semifinal', usaGrupos: false },
+  { clave: 'concentrado', nombre: 'Concentrado', usaGrupos: true },
+  { clave: 'semifinal', nombre: 'Semifinal', usaGrupos: false },
+  { clave: 'final', nombre: 'Final', usaGrupos: false },
 ];
+
+// Etiquetas de los dos grupos del concentrado (Art. 10 del reglamento los llama Grupo 1 y Grupo 2).
+const GRUPO_CONC_1 = 'A';
+const GRUPO_CONC_2 = 'B';
 
 export default function FasesAdminPage() {
   const { notificar } = useToast();
@@ -20,12 +24,24 @@ export default function FasesAdminPage() {
   const [inscritos, setInscritos] = useState([]);
   const [sel, setSel] = useState({});          // { equipo_inscrito_id: grupo ('' si no usa grupo) }
   const [cantidad, setCantidad] = useState(4);
+  const [fasesConfig, setFasesConfig] = useState([]);   // fases que ya tienen equipos
   const [guardando, setGuardando] = useState(false);
 
   const cfg = FASES.find((f) => f.clave === fase);
 
+  // Fase de la que se toman los clasificados: la semifinal viene del concentrado si existe;
+  // en categorías de un solo grupo (sin concentrado) viene directo de la ronda eliminatoria.
+  const anterior = fase === 'concentrado' ? 'eliminatoria'
+    : fase === 'semifinal' ? (fasesConfig.includes('concentrado') ? 'concentrado' : 'eliminatoria')
+    : 'semifinal';
+  const cantidadSugerida = fase === 'concentrado' ? 4
+    : fase === 'semifinal' ? (anterior === 'concentrado' ? 2 : 4) : 2;
+  useEffect(() => { setCantidad(cantidadSugerida); }, [fase, anterior]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function cargar() {
     if (!temporadaCategoriaId) return;
+    api.get(`/fases?temporada_categoria_id=${temporadaCategoriaId}`)
+      .then((l) => setFasesConfig(l.map((x) => x.fase))).catch(() => setFasesConfig([]));
     Promise.all([
       api.get(`/fases/equipos?temporada_categoria_id=${temporadaCategoriaId}&fase=eliminatoria`),
       api.get(`/fases/equipos?temporada_categoria_id=${temporadaCategoriaId}&fase=${fase}`),
@@ -53,12 +69,28 @@ export default function FasesAdminPage() {
   // Preselecciona los N mejores de cada grupo de la fase anterior (se puede ajustar a mano).
   async function sugerir() {
     try {
-      const filas = await api.get(`/posiciones?temporada_categoria_id=${temporadaCategoriaId}&fase=${cfg.anterior}`);
+      const filas = await api.get(`/posiciones?temporada_categoria_id=${temporadaCategoriaId}&fase=${anterior}`);
       const porGrupo = {};
       filas.forEach((f) => { const g = f.grupo || ''; (porGrupo[g] = porGrupo[g] || []).push(f); });
+      const nombresGrupo = Object.keys(porGrupo).sort();
+      const N = Number(cantidad) || 0;
       const nuevo = {};
-      Object.values(porGrupo).forEach((lista) => {
-        lista.slice(0, Number(cantidad) || 0).forEach((f) => { nuevo[Number(f.equipo_inscrito_id)] = cfg.usaGrupos ? (f.grupo || '') : ''; });
+      nombresGrupo.forEach((g, gi) => {
+        porGrupo[g].slice(0, N).forEach((f, i) => {
+          const pos = i + 1;
+          let grupoConcentrado = '';
+          if (fase === 'concentrado') {
+            if (nombresGrupo.length === 2) {
+              // Reglamento Art. 10: Grupo 1 = 1ºA, 2ºB, 3ºA, 4ºB · Grupo 2 = 1ºB, 2ºA, 3ºB, 4ºA
+              const impar = pos % 2 === 1;
+              const primeroGrupo = gi === 0;
+              grupoConcentrado = (impar === primeroGrupo) ? GRUPO_CONC_1 : GRUPO_CONC_2;
+            } else {
+              grupoConcentrado = f.grupo || '';
+            }
+          }
+          nuevo[Number(f.equipo_inscrito_id)] = grupoConcentrado;
+        });
       });
       setSel(nuevo);
       notificar(`Se preseleccionaron ${Object.keys(nuevo).length} equipos. Revisa y guarda.`, 'exito');
@@ -116,10 +148,15 @@ export default function FasesAdminPage() {
 
       <div className="campo--fila" style={{ marginBottom: 16, alignItems: 'flex-end' }}>
         <div className="campo">
-          <label>Preseleccionar los primeros de cada grupo de «{cfg.anterior}»</label>
+          <label>Preseleccionar los primeros de cada grupo de «{anterior}»</label>
           <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} style={{ maxWidth: 90 }} />
         </div>
         <button className="boton boton--fantasma" onClick={sugerir}>Sugerir equipos</button>
+        {fase === 'concentrado' && (
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
+            Arma el concentrado cruzado según el reglamento: Grupo {GRUPO_CONC_1} = 1ºA, 2ºB, 3ºA, 4ºB · Grupo {GRUPO_CONC_2} = 1ºB, 2ºA, 3ºB, 4ºA.
+          </span>
+        )}
       </div>
 
       {inscritos.length === 0 && <div className="vacio">Esta categoría no tiene equipos inscritos.</div>}
@@ -130,7 +167,7 @@ export default function FasesAdminPage() {
               <th>Juega</th>
               <th style={{ textAlign: 'left' }}>Equipo</th>
               <th>Grupo en eliminatoria</th>
-              {cfg.usaGrupos && <th>Grupo en {cfg.nombre} (A, B…)</th>}
+              {cfg.usaGrupos && <th>Grupo en {cfg.nombre}</th>}
             </tr>
           </thead>
           <tbody>

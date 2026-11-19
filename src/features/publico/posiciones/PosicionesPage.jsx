@@ -6,7 +6,7 @@ import { api } from '../../../api/client';
 import { exportarTablaPDF } from '../../../utils/exportarPDF';
 
 const NOMBRE_FASE = {
-  eliminatoria: 'Eliminatoria', concentrado: 'Concentrado', semifinal: 'Semifinal', final: 'Final',
+  eliminatoria: 'Ronda eliminatoria', concentrado: 'Concentrado', semifinal: 'Semifinal', final: 'Final',
 };
 
 function n(v) { return v === null || v === undefined ? '—' : v; }
@@ -41,16 +41,19 @@ export default function PosicionesPage() {
   const [cargando, setCargando] = useState(false);
   const [fases, setFases] = useState([{ fase: 'eliminatoria' }]);
   const [fase, setFase] = useState('eliminatoria');
+  const [grupoSel, setGrupoSel] = useState('');   // '' = el primero · '__todos' = todos los grupos
 
   function alCambiarCategoria(id, cat) {
     setTemporadaCategoriaId(id);
     setCategoria(cat);
+    setGrupoSel('');
   }
 
   // Fases disponibles de la categoría (la eliminatoria siempre; las demás cuando el admin las configura)
   useEffect(() => {
     if (!temporadaCategoriaId) return;
     setFase('eliminatoria');
+    setGrupoSel('');
     api.get(`/fases?temporada_categoria_id=${temporadaCategoriaId}`)
       .then((f) => setFases(f.length ? f : [{ fase: 'eliminatoria' }]))
       .catch(() => setFases([{ fase: 'eliminatoria' }]));
@@ -73,11 +76,19 @@ export default function PosicionesPage() {
     grp.filas.push(f);
   }
 
-  async function descargarPDF() {
+  // Con varios grupos (A, B…) se ve uno a la vez, como se publica; "Todos" muestra los dos juntos.
+  const hayVariosGrupos = grupos.length > 1;
+  const grupoActivo = !hayVariosGrupos ? ''
+    : (grupoSel === '__todos' || grupos.some((g) => g.nombre === grupoSel)) ? grupoSel : grupos[0].nombre;
+  const gruposVisibles = grupoActivo === '' || grupoActivo === '__todos'
+    ? grupos : grupos.filter((g) => g.nombre === grupoActivo);
+
+  async function descargarPDF(todosLosGrupos = false) {
+    const lista = todosLosGrupos ? grupos : gruposVisibles;
     const cols = ['Pos', 'Equipo', 'JJ', 'JG', 'JP', 'JE', 'AVE', 'PTOS', 'C.A',
       ...(avanzado ? ['IJO', 'M1'] : []), 'C.P', ...(avanzado ? ['IJD', 'M2', 'BCE'] : []), 'D.C', 'REND'];
-    const secciones = grupos.map((g) => ({
-      titulo: grupos.length > 1 ? `Grupo ${g.nombre}` : undefined,
+    const secciones = lista.map((g) => ({
+      titulo: hayVariosGrupos ? `Grupo ${g.nombre}` : undefined,
       nota: fases.length > 1 ? `Fase: ${NOMBRE_FASE[fase]}` : undefined,
       columnas: cols,
       filas: g.filas.map((f, i) => [
@@ -90,7 +101,7 @@ export default function PosicionesPage() {
     await exportarTablaPDF({
       titulo: `TABLA DE POSICIONES${fases.length > 1 ? ' — ' + NOMBRE_FASE[fase].toUpperCase() : ''}`,
       subtitulo: categoria ? `${categoria.categoria_nombre}${categoria.copa_nombre ? ' — ' + categoria.copa_nombre : ''}` : '',
-      secciones, nombreArchivo: `Posiciones_${(categoria?.categoria_nombre || 'liga').replace(/\s+/g, '_')}_${fase}`,
+      secciones, nombreArchivo: `Posiciones_${(categoria?.categoria_nombre || 'liga').replace(/\s+/g, '_')}_${fase}${hayVariosGrupos && lista.length === 1 ? '_Grupo_' + lista[0].nombre : ''}`,
     });
   }
 
@@ -107,22 +118,42 @@ export default function PosicionesPage() {
             {fases.map((f) => (
               <button key={f.fase}
                 className={`boton ${fase === f.fase ? 'boton--dorado' : 'boton--fantasma'}`}
-                onClick={() => setFase(f.fase)}>
+                onClick={() => { setFase(f.fase); setGrupoSel(''); }}>
                 {NOMBRE_FASE[f.fase]}
               </button>
             ))}
           </div>
         )}
+        {hayVariosGrupos && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+            {grupos.map((g) => (
+              <button key={g.nombre}
+                className={`boton boton--chico ${grupoActivo === g.nombre ? 'boton--primario' : 'boton--fantasma'}`}
+                onClick={() => setGrupoSel(g.nombre)}>
+                Grupo {g.nombre}
+              </button>
+            ))}
+            <button className={`boton boton--chico ${grupoActivo === '__todos' ? 'boton--primario' : 'boton--fantasma'}`}
+              onClick={() => setGrupoSel('__todos')}>
+              Todos los grupos
+            </button>
+          </div>
+        )}
         {filas.length > 0 && (
-          <div style={{ marginBottom: 'var(--space-4)' }}>
-            <button className="boton boton--fantasma" onClick={descargarPDF}>📄 Descargar PDF</button>
+          <div style={{ marginBottom: 'var(--space-4)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="boton boton--fantasma" onClick={() => descargarPDF(false)}>
+              📄 Descargar PDF{hayVariosGrupos && grupoActivo !== '__todos' ? ` (Grupo ${grupoActivo})` : ''}
+            </button>
+            {hayVariosGrupos && grupoActivo !== '__todos' && (
+              <button className="boton boton--fantasma" onClick={() => descargarPDF(true)}>📄 PDF de todos los grupos</button>
+            )}
           </div>
         )}
         {cargando && <div className="vacio">Cargando…</div>}
         {!cargando && filas.length === 0 && <div className="vacio">{fase === 'eliminatoria' ? 'Sin juegos registrados todavía.' : 'Esta fase aún no tiene equipos asignados.'}</div>}
-        {!cargando && grupos.map((g) => (
+        {!cargando && gruposVisibles.map((g) => (
           <div key={g.nombre} style={{ marginBottom: 'var(--space-6)' }}>
-            {grupos.length > 1 && (
+            {gruposVisibles.length > 1 && (
               <h2 style={{ fontSize: 13, color: 'var(--blue-txt)', marginBottom: 8, fontWeight: 700 }}>Grupo {g.nombre}</h2>
             )}
             <div style={{ overflowX: 'auto' }}>
@@ -168,7 +199,7 @@ export default function PosicionesPage() {
             </div>
           </div>
         ))}
-        <MatrizCruces temporadaCategoriaId={temporadaCategoriaId} fase={fase} />
+        <MatrizCruces temporadaCategoriaId={temporadaCategoriaId} fase={fase} grupo={grupoActivo === '__todos' ? '' : grupoActivo} />
       </main>
     </div>
   );
